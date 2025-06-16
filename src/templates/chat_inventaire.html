@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}Chat Inventaire - JPJR{% endblock %}
+
+{% block extra_css %}
+    <!-- Les styles spécifiques au chat ont été déplacés vers static/css/main.css ou remplacés par des classes Bootstrap -->
+{% endblock %}
+
+{% block content %}
+<div id="chat-container" class="container-lg p-4">
+    <h2 class="section-title-underline mb-4"><i class="bi bi-chat-dots-fill me-2"></i>Chat Inventaire</h2>
+    
+    <div class="card mb-3" style="background-color: var(--theme-bg-content-panel); border: 1px solid var(--theme-border-light); border-radius: var(--border-radius-md, 0.5rem); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <div id="chat-messages" class="card-body overflow-y-auto p-3" style="height: 400px; position: relative; background-color: var(--theme-bg-content-panel);">
+            <div class="system-message fst-italic text-center mb-3">Posez vos questions sur l'inventaire. L'IA utilisera la liste actuelle du matériel pour répondre.</div>
+            <!-- Les messages du chat apparaîtront ici -->
+        </div>
+    </div>
+
+    <div id="chat-controls" style="position: relative; z-index: 10;">
+        <div id="chat-input-group" class="input-group mb-3">
+            <input type="text" id="chat-input" class="form-control form-control-lg flex-grow-1 me-2" 
+                placeholder="Posez une question sur l'inventaire..." 
+                aria-label="Votre question"
+                style="background-color: rgba(255, 255, 255, 0.05); border: 1px solid var(--theme-border-input); color: var(--theme-text-primary); font-family: inherit;">
+            <button id="send-chat-btn" class="btn btn-lg" type="button"
+                >
+                <i class="bi bi-send"></i> Envoyer
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatInput = document.getElementById('chat-input');
+    const chatMessages = document.getElementById('chat-messages');
+    const sendChatBtn = document.getElementById('send-chat-btn');
+
+    // Fonction pour ajouter un message à l'interface de chat
+    // Fonction pour ajouter un message à l'interface de chat
+    // Assurez-vous que marked.js est chargé avant cette fonction (par exemple, dans extra_js)
+    function addMessage(text, sender) {
+        const messageDiv = document.createElement('div');
+        // Ajouter la classe de base pour les styles communs et les utilitaires Bootstrap de base
+        messageDiv.classList.add('chat-message', 'p-2', 'mb-2');
+
+        if (sender === 'user') {
+            messageDiv.classList.add('user-message', 'bg-primary', 'text-white', 'text-end', 'ms-auto');
+            messageDiv.textContent = text;
+        } else if (sender === 'ai') {
+            messageDiv.classList.add('ai-message', 'bg-secondary', 'text-white', 'text-start', 'me-auto');
+            // Utiliser marked.js pour convertir le Markdown en HTML
+            // S'assurer que marked() est disponible (la bibliothèque doit être chargée)
+            if (window.marked && typeof window.marked.parse === 'function') {
+                messageDiv.innerHTML = marked.parse(text);
+            } else {
+                // Fallback si marked.js n'est pas chargé : simple remplacement des sauts de ligne
+                console.warn('marked.js non chargé. Affichage brut avec <br>.');
+                messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+            }
+        } else if (sender === 'system') {
+            // Pour les messages système dynamiques, appliquer les styles correspondants
+            messageDiv.classList.add('system-message', 'fst-italic', 'text-center');
+            messageDiv.textContent = text;
+        } else {
+            // Fallback pour d'autres types de messages éventuels
+            messageDiv.classList.add(sender + '-message');
+            messageDiv.textContent = text;
+        }
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight; // Auto-scroll vers le bas
+    }
+
+    async function handleChatSubmit() {
+        // La logique de soumission est déplacée ici
+        const userQuery = chatInput.value.trim();
+
+        if (!userQuery) return;
+
+        addMessage(userQuery, 'user');
+        chatInput.value = ''; // Vider le champ de saisie
+        sendChatBtn.disabled = true;
+        sendChatBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Envoi...';
+
+        try {
+            const response = await fetch("{{ url_for('ai.handle_inventory_chat') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                    // Si vous avez un token CSRF, vous devrez le rendre disponible
+                    // et l'ajouter ici, par exemple :
+                    // 'X-CSRFToken': g_csrf_token // en supposant que g_csrf_token est une variable globale JS
+                },
+                body: JSON.stringify({ query: userQuery })
+            });
+
+            if (!response.ok) {
+                let errorMsg = "Erreur de communication avec le serveur.";
+                try {
+                    const errData = await response.json();
+                    errorMsg = errData.error || `Erreur ${response.status}`;
+                } catch (e) { /* Ignorer si la réponse d'erreur n'est pas JSON */ }
+                throw new Error(errorMsg);
+            }
+
+            const data = await response.json();
+            addMessage(data.response, 'ai');
+
+        } catch (error) {
+            console.error('Erreur lors de la communication avec le chat IA:', error);
+            addMessage("Désolé, une erreur s'est produite. Veuillez réessayer.", 'ai');
+        } finally {
+            sendChatBtn.disabled = false;
+            sendChatBtn.innerHTML = '<i class="bi bi-send"></i> Envoyer';
+        }
+    }
+
+    sendChatBtn.addEventListener('click', handleChatSubmit);
+
+    chatInput.addEventListener('keypress', function(event) {
+        if (event.key === 'Enter') {
+            event.preventDefault(); // Empêche le comportement par défaut de la touche Entrée (si elle était dans un formulaire)
+            handleChatSubmit();
+        }
+    });
+
+    // L'ancien event listener sur chatForm est supprimé car chatForm n'existe plus
+    // La logique de soumission est maintenant dans handleChatSubmit
+    // et est appelée par le clic sur le bouton ou la touche Entrée.
+});
+</script>
+{% endblock %}

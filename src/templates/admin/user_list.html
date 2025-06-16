@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Liste des Utilisateurs - Administration{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <div class="row">
+        <div class="col-md-12 mb-4 d-flex justify-content-between align-items-center">
+            <h2 class="section-title-underline mb-0"><i class="bi bi-people-fill me-2"></i>Liste des Utilisateurs</h2>
+        </div>
+    </div>
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Emprunts actifs</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.name }}</td>
+                            <td>
+                                {% if user.active_borrows_count > 0 %}
+                                <span class="badge bg-secondary">{{ user.active_borrows_count }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.active_borrows_count == 0 %}
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="confirmDelete('{{ user.id }}', '{{ user.name }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% else %}
+                                <button type="button" class="btn btn-sm btn-danger" disabled 
+                                        title="Impossible de supprimer un utilisateur avec des emprunts actifs">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmation de suppression</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p>Êtes-vous sûr de vouloir supprimer l'utilisateur <span id="userName"></span> ?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <form id="deleteForm" method="POST" action="">
+                    <button type="submit" class="btn btn-outline-danger">Supprimer</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmDelete(userId, userName) {
+        document.getElementById('userName').textContent = userName;
+        document.getElementById('deleteForm').action = "{{ url_for('admin.delete_user', user_id=0) }}".replace('0', userId);
+        
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+        deleteModal.show();
+    }
+</script>
+{% endblock %}

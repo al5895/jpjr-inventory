@@ -1,0 +1,826 @@
+/* Main CSS file - Unified approach */
+
+/*==================================
+ * 1. SETTINGS
+ *==================================*/
+:root {
+  /* Enhanced Dark Theme Color Palette */
+  --theme-bg-main: #1A1D24;                     /* Deep dark blue/grey for body */
+  --theme-bg-content-panel: #242830;            /* Slightly lighter for cards/panels */
+  --theme-text-primary: #EAEAEA;                /* Main text */
+  --theme-text-secondary: #A8A8A8;              /* Muted text */
+  
+  --theme-accent-primary: #00BFA6;              /* Vibrant Teal - main accent */
+  /* --theme-accent-primary-darker: #00A99D; */    /* For hover/active states of accent - can be derived or explicit */
+  --theme-accent-secondary: #4FC3F7;            /* Lighter, friendly blue for links, secondary highlights */
+  
+  --theme-gradient-button-start: #18FFFF;       /* Bright Cyan for button gradient */
+  --theme-gradient-button-end: #00BFA6;         /* Teal for button gradient */
+
+  --theme-border-light: rgba(255, 255, 255, 0.08); /* Softer Light border for dark elements */
+  --theme-border-input: rgba(255, 255, 255, 0.15);/* Slightly more visible border for inputs */
+  --link-color: var(--theme-accent-secondary);
+
+  /* Mapping to existing generic variable names */
+  --primary-color: var(--theme-accent-primary);
+  --primary-gradient-start: var(--theme-gradient-button-start);
+  --primary-gradient-end: var(--theme-gradient-button-end);
+  
+  --secondary-color: #5A6268; /* Darker grey for secondary elements */
+  --success-color: #38A169; /* Slightly adjusted green */
+  --danger-color: #E53E3E;  /* Slightly adjusted red */
+  --warning-color: #FFA000; /* Adjusted orange */
+  --info-color: var(--theme-accent-secondary); /* Use the friendly blue for info */
+  
+  --light-color: #f8f9fa; /* Standard light, for contrast if needed */
+  --dark-color: #343a40;  /* Standard dark, for contrast if needed */
+
+  --bg-dark: var(--theme-bg-main);
+  --text-light: var(--theme-text-primary);
+  --text-dark: #121212; /* For light theme text if ever implemented */
+  --border-color: var(--theme-border-light);
+
+  /* User Cards */
+.user-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid var(--theme-border-light);
+  background-color: var(--theme-bg-content-panel);
+  border-radius: var(--border-radius-md);
+  overflow: hidden;
+}
+
+.user-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border-color: var(--theme-accent-primary);
+}
+
+.user-card .card-body {
+  padding: 1.5rem 1rem;
+}
+
+.user-avatar {
+  color: var(--theme-accent-primary);
+  margin-bottom: 0.75rem;
+}
+
+.user-card .card-title {
+  color: var(--theme-text-primary);
+  font-weight: 500;
+  margin-bottom: 0.25rem;
+}
+
+.user-card .text-muted {
+  color: var(--theme-text-secondary) !important;
+  font-size: 0.85rem;
+}
+
+.user-card-wrapper {
+  display: block;
+  height: 100%;
+}
+
+/* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 3rem;
+
+  /* Border radius */
+  --border-radius-sm: 0.25rem;
+  --border-radius-md: 0.375rem;
+  --border-radius-lg: 0.5rem;
+
+  /* Transitions */
+  --transition-speed: 0.3s;
+}
+
+/*==================================
+ * 2. THEMES
+ *==================================*/
+/* Dark Theme */
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Common system font stack */
+  line-height: 1.6; /* Improve readability */
+}
+
+a, .link-style { /* Added .link-style for elements that are not <a> but should look like links */
+  color: var(--link-color);
+  text-decoration: none;
+  transition: color var(--transition-speed, 0.3s) ease;
+}
+
+a:hover, .link-style:hover {
+  color: var(--theme-accent-primary); /* Hover to main accent color */
+  text-decoration: underline;
+}
+
+.card {
+  background-color: var(--theme-bg-content-panel, #2a2e33);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg, 0.5rem); /* Consistent larger radius */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); /* Subtle shadow for depth */
+}
+
+.card-header {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.form-control, .form-select {
+  background-color: #2c3036; /* Slightly darker than card, distinct */
+  color: var(--text-light, #EAEAEA);
+  border: 1px solid var(--theme-border-input, #495057);
+  border-radius: var(--border-radius-md, 0.375rem); /* Consistent radius */
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: #3f474e;
+  color: #fff;
+}
+
+/* Fix placeholder color for dark inputs */
+.form-control:disabled, .form-select:disabled, .form-control[readonly], .form-select[readonly] {
+  background-color: #22252A; /* Slightly darker and less interactive */
+  color: var(--theme-text-secondary, #A8A8A8);
+  opacity: 0.7; /* Ensure text is not too faint */
+  border-color: var(--theme-border-input, #495057);
+}
+
+.form-control::placeholder { /* Also for .form-select if it can have placeholder */
+  color: var(--theme-text-secondary, rgba(255, 255, 255, 0.6));
+}
+
+.table {
+  color: var(--text-light);
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.075);
+}
+
+.table tbody tr td {
+  color: var(--text-light) !important; /* Ensure text is light and readable */
+}
+
+.table thead th {
+  color: var(--text-light); /* Ensure header text is also light */
+
+  background-color: rgba(255, 255, 255, 0.075);
+}
+
+/* Styling for temporary item rows in tables */
+.temporary-item-row td {
+  /* Jaune plein avec opacité légère */
+  background-color: rgba(255, 235, 59, 0.15) !important; /* Jaune (rgb(255, 235, 59)) avec opacité 15% */
+  color: var(--text-light) !important; 
+}
+
+/* Effet de survol pour les articles temporaires */
+.temporary-item-row:hover td {
+  background-color: rgba(255, 235, 59, 0.2) !important; /* Jaune avec opacité 20% au survol */
+  color: var(--text-light) !important;
+}
+
+.modal-content {
+  background-color: #2a2e33;
+  color: var(--text-light);
+}
+
+/*==================================
+ * 3. COMPONENTS
+ *==================================*/
+/* Buttons */
+.btn {
+  border-radius: var(--border-radius-md);
+  transition: all var(--transition-speed) ease;
+}
+
+
+/* Chat Inventaire Specific Styles */
+
+/* Styles du conteneur de messages */
+#chat-messages {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: var(--theme-bg-content-panel);
+    padding: 1rem;
+}
+
+/* Styles communs à tous les types de messages */
+.chat-message {
+    max-width: 75%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    position: relative;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Message utilisateur */
+.chat-message.user-message {
+    align-self: flex-end;
+    background: linear-gradient(135deg, var(--theme-gradient-button-start), var(--theme-gradient-button-end));
+    color: #000000 !important; /* Noir pour maximiser le contraste sur le gradient clair */
+    border-top-right-radius: 0.25rem;
+    font-weight: 500; /* Légèrement plus gras pour améliorer la lisibilité */
+}
+
+/* Message IA */
+.chat-message.ai-message {
+    align-self: flex-start;
+    background-color: rgba(255, 255, 255, 0.08); /* Légèrement plus clair que le fond */
+    color: var(--theme-text-primary);
+    border-top-left-radius: 0.25rem;
+    border-left: 3px solid var(--theme-accent-secondary);
+}
+
+/* Message système */
+.chat-message.system-message {
+    align-self: center;
+    background-color: transparent;
+    color: var(--theme-text-secondary);
+    font-size: 0.9em;
+    box-shadow: none;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+/* Styles pour les éléments markdown dans les messages AI */
+.ai-message h1, .ai-message h2, .ai-message h3, 
+.ai-message h4, .ai-message h5, .ai-message h6 {
+    color: var(--theme-accent-secondary);
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.ai-message a {
+    color: var(--theme-accent-primary);
+    text-decoration: underline;
+}
+
+.ai-message code {
+    background-color: rgba(0, 0, 0, 0.2);
+    color: var(--theme-accent-secondary);
+    padding: 0.15rem 0.3rem;
+    border-radius: 0.25rem;
+    font-family: monospace;
+}
+
+.ai-message pre {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    margin: 0.5rem 0;
+    overflow-x: auto;
+}
+
+.ai-message ul, .ai-message ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.ai-message blockquote {
+    border-left: 3px solid var(--theme-accent-secondary);
+    padding-left: 0.75rem;
+    margin-left: 0.5rem;
+    color: var(--theme-text-secondary);
+}
+
+/*
+.system-message {
+    color: var(--theme-text-secondary);
+    font-size: 0.9em;
+}
+*/
+
+/* Gradient Buttons - Unified style */
+
+/* Chat Send Button Specific Styles */
+#send-chat-btn {
+  background: linear-gradient(135deg, var(--theme-gradient-button-start), var(--theme-gradient-button-end));
+  color: #000000; /* Texte noir pour contraste */
+  border: none;
+  font-family: inherit; /* Hériter la police de l'application */
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* Ombre de base subtile */
+}
+
+#send-chat-btn:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  color: #000000; /* Maintenir le texte noir au survol */
+}
+
+#send-chat-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Original Gradient Buttons - Unified style */
+.gradient-button {
+  background: linear-gradient(45deg, var(--primary-gradient-start), var(--primary-gradient-end));
+  border: none;
+  color: #0D1B2A; /* Dark text for contrast on bright button */
+  padding: 0.6rem 1.5rem; /* Slightly larger padding */
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-weight: 500;
+  border-radius: var(--border-radius-md);
+  transition: all 0.2s ease-in-out; /* Slightly faster transition */
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); /* More subtle shadow */
+}
+
+.gradient-button:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+  filter: brightness(1.1); /* Make button slightly brighter on hover */
+  color: #0D1B2A; /* Dark text for contrast on bright button */
+}
+
+.gradient-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Section Title with Accent Underline */
+.section-title-underline {
+  display: inline-block;
+  font-weight: 600; /* Make title bolder */
+  padding-bottom: var(--spacing-sm, 0.5rem); /* More space for underline */
+  border-bottom: 3px solid var(--primary-color);
+  margin-bottom: var(--spacing-lg, 1.5rem);
+  color: var(--text-light); /* Ensure title color is consistent */
+}
+
+/* Delete Button */
+.dashboard-delete-btn {
+  background-color: transparent;
+  color: var(--danger-color);
+  border: 1px solid var(--danger-color);
+  border-radius: var(--border-radius-sm);
+  padding: 0.25rem 0.5rem;
+  transition: all var(--transition-speed) ease;
+}
+
+.dashboard-delete-btn:hover {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+/* Return Button */
+.return-button {
+  background-color: var(--success-color);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-sm);
+  padding: 0.25rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.return-button i {
+  font-size: 0.9rem;
+}
+
+/* Notifications */
+.notification {
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-radius: var(--border-radius-md);
+  background-color: var(--info-color);
+  color: white;
+}
+
+.notification.success {
+  background-color: var(--success-color);
+}
+
+.notification.error {
+  background-color: var(--danger-color);
+}
+
+.notification.warning {
+  background-color: var(--warning-color);
+  color: var(--text-dark);
+}
+
+/* Dropdown Menu */
+.custom-dropdown {
+  background-color: #2a2e33;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Autocomplete Suggestions for Modals */
+.suggestions-list {
+    position: absolute;
+    top: 100%; /* Position below the input field */
+    left: 0;
+    right: 0;
+    background-color: var(--theme-bg-content-panel, #2a2e33);
+    border: 1px solid var(--theme-border-input, #495057);
+    border-top: none; /* Avoid double border with input field */
+    z-index: 1056; /* Bootstrap modal z-index is 1050-1055. Needs to be above modal content. */
+    max-height: 200px; /* Limit height and enable scroll */
+    overflow-y: auto;
+    border-radius: 0 0 var(--border-radius-md) var(--border-radius-md); /* Match form-control radius */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.suggestion-item {
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--theme-border-light); /* Separator */
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item:hover {
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+.suggestion-item-name {
+    font-weight: 500;
+    color: var(--theme-text-primary);
+    margin-bottom: 0.25rem; /* Space between name and location */
+}
+
+.suggestion-item-name strong {
+    color: var(--theme-accent-primary);
+}
+
+.suggestion-item .text-muted {
+    font-size: 0.85em;
+    color: var(--theme-text-secondary) !important;
+}
+
+.dropdown-item {
+  color: var(--text-light);
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-header {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Voice Recognition */
+.voice-visualizer {
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  height: 60px;
+  margin: 20px 0;
+}
+
+.voice-visualizer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 60px;
+  margin: 20px 0;
+  transition: transform 0.1s ease-in-out;
+}
+
+.voice-bar {
+  width: 5px;
+  height: 20px;
+  margin: 0 3px;
+  background-color: var(--primary-color);
+  border-radius: 2px;
+  transition: height 0.2s ease;
+}
+
+.voice-visualizer.recording .voice-bar {
+  animation: pulse 1.5s infinite;
+}
+
+.voice-visualizer.recording .voice-bar:nth-child(2n) {
+  animation-delay: 0.2s;
+}
+
+.voice-visualizer.recording .voice-bar:nth-child(3n) {
+  animation-delay: 0.4s;
+}
+
+@keyframes pulse {
+  0% { height: 15px; }
+  50% { height: 40px; }
+  100% { height: 15px; }
+}
+
+.voice-timer {
+  text-align: center;
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.voice-results {
+  margin: 15px 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.processing-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.1);
+  border-radius: var(--border-radius-md);
+}
+
+.processing-spinner .spinner-text {
+  color: var(--theme-text-primary);
+  font-size: 0.9rem;
+}
+
+.voice-item-count {
+  font-weight: 500;
+  color: var(--primary-color);
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.voice-item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.voice-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  border-radius: var(--border-radius-sm);
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.voice-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* Styles pour les accordions de reconnaissance vocale */
+.accordion-flush .accordion-item {
+  background-color: transparent;
+  border-radius: var(--border-radius-sm);
+  margin-bottom: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.accordion-flush .accordion-button {
+  background-color: rgba(0, 0, 0, 0.2);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+}
+
+.accordion-flush .accordion-button:not(.collapsed) {
+  background-color: rgba(0, 123, 255, 0.2);
+}
+
+.accordion-flush .accordion-body {
+  padding: 0.75rem;
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/*==================================
+ * 4. LAYOUT
+ *==================================*/
+/* Navbar */
+.navbar {
+  background-color: #212529;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.navbar-brand {
+  color: var(--text-light);
+}
+
+.nav-link {
+  color: rgba(255, 255, 255, 0.75);
+  transition: color var(--transition-speed) ease;
+}
+
+.nav-link:hover {
+  color: var(--text-light);
+}
+
+/* Location Selectors */
+.location-selectors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: var(--spacing-md);
+}
+
+.location-selector-item {
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-md);
+  padding: var(--spacing-md);
+}
+
+.location-selector-item .title {
+  font-weight: 500;
+  margin-bottom: var(--spacing-sm);
+}
+
+/*==================================
+ * 5. PAGES
+ *==================================*/
+/* Location Admin Page */
+.location-admin-container .list-group-item {
+  background-color: #343a40;
+  color: var(--text-light);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.location-admin-container .list-group-item:hover {
+  background-color: #3f474e;
+}
+
+/* Inventory List */
+.inventory-count {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.export-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  background-color: #3a3a3a;
+  color: white;
+  border-radius: var(--border-radius-sm);
+  text-decoration: none;
+  transition: background-color var(--transition-speed) ease;
+}
+
+.export-btn:hover {
+  background-color: #4a4a4a;
+  color: white;
+}
+
+/* Flatpickr Dark Theme Overrides */
+.flatpickr-calendar {
+  background-color: var(--theme-bg-content-panel, #242830);
+  border: 1px solid var(--theme-border-light, rgba(255, 255, 255, 0.08));
+  border-radius: var(--border-radius-md, 0.375rem);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+}
+
+.flatpickr-month,
+.flatpickr-current-month .flatpickr-monthDropdown-months,
+.flatpickr-current-month input.cur-year {
+  color: var(--theme-text-primary, #EAEAEA);
+  fill: var(--theme-text-primary, #EAEAEA); /* For SVG icons */
+}
+
+.flatpickr-weekday {
+  color: var(--theme-text-secondary, #A8A8A8);
+}
+
+.flatpickr-day {
+  color: var(--theme-text-primary, #EAEAEA);
+}
+
+.flatpickr-day:hover,
+.flatpickr-day:focus {
+  background-color: rgba(var(--theme-accent-primary-rgb, 0, 191, 166), 0.2);
+  color: var(--theme-text-primary, #EAEAEA);
+  border-color: transparent;
+}
+
+.flatpickr-day.today {
+  border-color: var(--theme-accent-secondary, #4FC3F7);
+  color: var(--theme-accent-secondary, #4FC3F7);
+}
+
+.flatpickr-day.today:hover {
+    background-color: rgba(var(--theme-accent-secondary-rgb, 79, 195, 247), 0.2);
+    color: var(--theme-accent-secondary, #4FC3F7);
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected.inRange,
+.flatpickr-day.startRange.inRange,
+.flatpickr-day.endRange.inRange,
+.flatpickr-day.selected:focus,
+.flatpickr-day.startRange:focus,
+.flatpickr-day.endRange:focus,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover,
+.flatpickr-day.selected.prevMonthDay,
+.flatpickr-day.startRange.prevMonthDay,
+.flatpickr-day.endRange.prevMonthDay,
+.flatpickr-day.selected.nextMonthDay,
+.flatpickr-day.startRange.nextMonthDay,
+.flatpickr-day.endRange.nextMonthDay {
+  background-color: var(--theme-accent-primary, #00BFA6);
+  border-color: var(--theme-accent-primary, #00BFA6);
+  color: #0D1B2A; /* Dark text for contrast on bright selection */
+}
+
+.flatpickr-day.disabled,
+.flatpickr-day.disabled:hover,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: var(--theme-text-secondary, #A8A8A8);
+  opacity: 0.6;
+}
+
+.flatpickr-time input,
+.flatpickr-time .flatpickr-am-pm {
+    color: var(--theme-text-primary, #EAEAEA);
+}
+
+.numInputWrapper span.arrowUp:after {
+    border-bottom-color: var(--theme-text-secondary, #A8A8A8);
+}
+.numInputWrapper span.arrowDown:after {
+    border-top-color: var(--theme-text-secondary, #A8A8A8);
+}
+
+.flatpickr-months .flatpickr-prev-month:hover svg,
+.flatpickr-months .flatpickr-next-month:hover svg {
+    fill: var(--theme-accent-primary, #00BFA6);
+}
+
+/* Dashboard - My Borrows Section */
+.borrow-item {
+  background-color: var(--theme-bg-content-card, #1E2229); /* Slightly different from main card body if needed */
+  border: 1px solid var(--theme-border-light, rgba(255, 255, 255, 0.08));
+  color: var(--theme-text-primary, #EAEAEA);
+  border-radius: var(--border-radius-md, 0.375rem);
+  padding: var(--spacing-md, 1rem);
+}
+
+.borrow-item h5 {
+  color: var(--theme-text-primary, #EAEAEA); /* Ensure title is bright */
+  margin-bottom: 0.5rem; /* Adjust as needed */
+}
+
+.borrow-item p,
+.borrow-item .item-location span,
+.borrow-item .location-info span {
+  color: var(--theme-text-secondary, #A8A8A8); /* Subtler text for details */
+}
+
+.borrow-item strong {
+  color: var(--theme-text-primary, #EAEAEA); /* Make strong tags stand out a bit more */
+}
+
+/* Ensure vertical alignment for title and button in borrow item header */
+.borrow-item > div:first-child.d-flex {
+    align-items: center;
+}
+
+/* Styles pour les list-group-item en thème sombre */
+.list-group-item-action {
+  color: var(--theme-text-primary);
+  background-color: var(--theme-bg-content-card);
+  border-color: var(--theme-border-color);
+}
+
+.list-group-item-action:hover,
+.list-group-item-action:focus {
+  color: var(--theme-text-primary);
+  background-color: var(--theme-bg-hover);
+  border-color: var(--theme-border-color-strong);
+}
+
+.list-group-item-action:active {
+  color: var(--theme-text-primary);
+  background-color: var(--theme-bg-active);
+  border-color: var(--theme-border-color-strong);
+}
+
+.list-group-item.active {
+    background-color: var(--theme-primary-color);
+    border-color: var(--theme-primary-color);
+    color: var(--theme-text-on-primary);
+}
+

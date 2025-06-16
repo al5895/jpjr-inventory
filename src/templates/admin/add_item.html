@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Ajouter un Article - Administration{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <div class="card mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="card-title mb-0 section-title-underline">Ajouter un Article</h2>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin.add_item') }}">
+                <div class="mb-3">
+                    <label for="name" class="form-label">Nom de l'article <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="name" name="name" value="{{ name | default('') }}" required>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="zone_id" class="form-label">Zone <span class="text-danger">*</span></label>
+                    <select class="form-select" id="zone_id" name="zone_id" required>
+                        <option value="">Sélectionnez une zone</option>
+                        {% for zone in zones %}
+                        <option value="{{ zone.id }}" {% if zone.id == selected_zone %}selected{% endif %}>{{ zone.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="furniture_id" class="form-label">Meuble <span class="text-danger">*</span></label>
+                    <select class="form-select" id="furniture_id" name="furniture_id" required>
+                        <option value="">Sélectionnez un meuble</option>
+                        {% for furniture in furnitures %}
+                        <option value="{{ furniture.id }}" {% if furniture.id == selected_furniture %}selected{% endif %}>{{ furniture.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="drawer_id" class="form-label">Tiroir/Niveau <span class="text-danger">*</span></label>
+                    <select class="form-select" id="drawer_id" name="drawer_id" required>
+                        <option value="">Sélectionnez un tiroir/niveau</option>
+                        {% for drawer in drawers %}
+                        <option value="{{ drawer.id }}" {% if drawer.id == selected_drawer %}selected{% endif %}>{{ drawer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Ajouter l'article
+                    </button>
+                    <a href="{{ url_for('admin.items_list') }}" class="btn btn-secondary">
+                        <i class="bi bi-x-circle"></i> Annuler
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}Gestion des Emplacements - Administration{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-locations.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4" id="locationManager">
+    <div id="notificationContainer"></div>
+    <div class="row">
+        <div class="col-md-12 mb-4 d-flex justify-content-between align-items-center">
+            <h2 class="section-title-underline mb-0"><i class="bi bi-geo-fill me-2"></i>Gestion des Emplacements</h2>
+        </div>
+    </div>
+                
+            <div class="row mb-4 location-panels-row">
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm location-panel">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-geo-alt-fill"></i> Zones
+                                <span class="badge bg-dark text-white ms-2">{{ zones|length }}</span>
+                            </h5>
+                            <button class="btn btn-sm btn-outline-secondary action-btn" id="addZoneBtn">
+                                <i class="bi bi-plus-lg"></i> Ajouter
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            {% if zones %}
+                            <div class="list-group list-group-flush" id="zonesList">
+                                {% for zone in zones %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center zone-item" 
+                                     data-id="{{ zone.id }}" data-name="{{ zone.name }}">
+                                    <div>
+                                        <span class="fw-bold">{{ zone.name }}</span>
+                                        <small class="text-muted d-block">{{ zone.furniture|length }} meuble(s)</small>
+                                    </div>
+                                    <div class="btn-group">
+                                        <button class="btn btn-outline-primary btn-sm view-zone-furniture action-btn" 
+                                                data-id="{{ zone.id }}" data-name="{{ zone.name }}" title="Voir les meubles">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm add-furniture action-btn" 
+                                                data-zone-id="{{ zone.id }}" data-zone-name="{{ zone.name }}" title="Ajouter un meuble">
+                                            <i class="bi bi-plus-lg"></i>
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm edit-zone action-btn" 
+                                                data-id="{{ zone.id }}" data-name="{{ zone.name }}" title="Modifier la zone">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm delete-zone action-btn" 
+                                                data-id="{{ zone.id }}" data-name="{{ zone.name }}" title="Supprimer la zone">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="empty-message">Aucune zone définie</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm location-panel">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-cabinet-fill"></i> Meubles
+                                <span id="selectedZoneName" class="badge bg-dark text-white ms-2">Sélectionnez une zone</span>
+                            </h5>
+                        </div>
+                        <div class="card-body p-0" id="furnitureContainer">
+                            <div class="empty-message">Sélectionnez une zone pour voir ses meubles</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card h-100 shadow-sm location-panel">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="bi bi-inbox-fill"></i> Tiroirs/Niveaux
+                                <span id="selectedFurnitureName" class="badge bg-dark text-white ms-2">Sélectionnez un meuble</span>
+                            </h5>
+                        </div>
+                        <div class="card-body p-0" id="drawerContainer">
+                            <div class="empty-message">Sélectionnez un meuble pour voir ses tiroirs</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-dark bg-opacity-75">
+                            <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Structure complète</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="location-tree">
+                                <div class="list-group" id="locationTreeView">
+                                    {% if zones %}
+                                        {% for zone in zones %}
+                                        <div class="list-group-item zone-item d-flex justify-content-between align-items-center">
+                                            <span><i class="bi bi-geo-alt"></i> <strong>{{ zone.name }}</strong></span>
+                                            <div>
+                                                <button class="btn btn-sm btn-outline-success action-btn add-furniture-tree" 
+                                                        data-zone-id="{{ zone.id }}" data-zone-name="{{ zone.name }}">
+                                                    <i class="bi bi-plus-lg"></i> Meuble
+                                                </button>
+                                                <button class="btn btn-sm btn-outline-danger action-btn delete-zone-tree" 
+                                                        data-id="{{ zone.id }}" data-name="{{ zone.name }}">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                            {% for furniture in zone.furniture %}
+                                            <div class="list-group-item furniture-item d-flex justify-content-between align-items-center">
+                                                <span><i class="bi bi-cabinet"></i> {{ furniture.name }}</span>
+                                                <div>
+                                                    <button class="btn btn-sm btn-outline-danger action-btn add-drawer-tree" 
+                                                            data-furniture-id="{{ furniture.id }}" data-furniture-name="{{ furniture.name }}">
+                                                        <i class="bi bi-plus-lg"></i> Tiroir
+                                                    </button>
+                                                    <button class="btn btn-sm btn-outline-danger action-btn delete-furniture-tree" 
+                                                            data-id="{{ furniture.id }}" data-name="{{ furniture.name }}">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                                {% for drawer in furniture.drawers %}
+                                                <div class="list-group-item drawer-item d-flex justify-content-between align-items-center">
+                                                    <span><i class="bi bi-inbox"></i> {{ drawer.name }}</span>
+                                                    <button class="btn btn-sm btn-outline-danger action-btn delete-drawer-tree" 
+                                                            data-id="{{ drawer.id }}" data-name="{{ drawer.name }}">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </div>
+                                                {% endfor %}
+                                            {% endfor %}
+                                        {% endfor %}
+                                    {% else %}
+                                    <div class="empty-message">Aucune structure définie</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+<!-- Modal pour ajouter une zone -->
+<div class="modal fade" id="zoneModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="zoneModalTitle">Ajouter une zone</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="zoneForm">
+                    <input type="hidden" id="zoneId">
+                    <div class="mb-3">
+                        <label for="zoneName" class="form-label">Nom de la zone</label>
+                        <input type="text" class="form-control" id="zoneName" required placeholder="Ex: Bâtiment A, Salle 101...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="zoneDescription" class="form-label">Description (optionnelle)</label>
+                        <textarea class="form-control" id="zoneDescription" rows="2" placeholder="Description de la zone"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveZone">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour ajouter un meuble -->
+<div class="modal fade" id="furnitureModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="furnitureModalTitle">Ajouter un meuble</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="furnitureForm">
+                    <input type="hidden" id="furnitureId">
+                    <input type="hidden" id="furnitureZoneId">
+                    <div class="mb-3">
+                        <label for="furnitureZoneName" class="form-label">Zone</label>
+                        <input type="text" class="form-control" id="furnitureZoneName" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="furnitureName" class="form-label">Nom du meuble</label>
+                        <input type="text" class="form-control" id="furnitureName" required placeholder="Ex: Armoire A, Étagère 1...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="furnitureDescription" class="form-label">Description (optionnelle)</label>
+                        <textarea class="form-control" id="furnitureDescription" rows="2" placeholder="Description du meuble"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success" id="saveFurniture">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal pour ajouter un tiroir -->
+<div class="modal fade" id="drawerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="drawerModalTitle">Ajouter un tiroir/niveau</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="drawerForm">
+                    <input type="hidden" id="drawerId">
+                    <input type="hidden" id="drawerFurnitureId">
+                    <div class="mb-3">
+                        <label for="drawerFurnitureName" class="form-label">Meuble</label>
+                        <input type="text" class="form-control" id="drawerFurnitureName" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="drawerName" class="form-label">Nom du tiroir/niveau</label>
+                        <input type="text" class="form-control" id="drawerName" required placeholder="Ex: Tiroir 1, Niveau 2...">
+                    </div>
+                    <div class="mb-3">
+                        <label for="drawerDescription" class="form-label">Description (optionnelle)</label>
+                        <textarea class="form-control" id="drawerDescription" rows="2" placeholder="Description du tiroir/niveau"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="saveDrawer">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmation de suppression -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">Confirmer la suppression</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteMessage">Êtes-vous sûr de vouloir supprimer cet élément ?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <span id="deleteWarning"></span>
+                </div>
+                <input type="hidden" id="deleteType">
+                <input type="hidden" id="deleteId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/location-core.js') }}"></script>
+<script src="{{ url_for('static', filename='js/admin-locations.js') }}"></script>
+{% endblock %}

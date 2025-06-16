@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block title %}Reconnaissance Vocale d'Inventaire - Administration{% endblock %}
+
+{% block additional_scripts %}
+<script src="{{ url_for('static', filename='js/location-core.js') }}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <div class="row">
+        <div class="col-12 mb-4 d-flex justify-content-between align-items-center">
+            <h2 class="section-title-underline mb-0"><i class="bi bi-mic-fill me-2"></i>Ajout à l'inventaire par reconnaissance vocale</h2>
+            <!-- Aucun bouton retour ici pour l'instant, peut être ajouté si nécessaire -->
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-body">
+                            <div class="card voice-recognition-panel mb-3">
+                                <div class="card-header">
+                                    <h4 class="mb-0"><i class="bi bi-mic-fill me-2"></i>Reconnaissance vocale</h4>
+                                </div>
+                                <div class="card-body">
+                                    <p id="inventoryVoiceStatus" class="lead text-center mb-4">Prêt à enregistrer</p>
+                                    
+                                    <div id="inventoryVoiceVisualizer" class="voice-visualizer mb-4">
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                        <div class="voice-bar"></div>
+                                    </div>
+                                    
+                                    <div class="text-center mb-4">
+                                        <div id="inventoryVoiceTimer" class="voice-timer h3">00:00</div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-center mb-4">
+                                        <button type="button" id="inventoryStartStopRecording" class="btn btn-lg gradient-button me-3">
+                                            <i class="bi bi-mic-fill me-2"></i>Démarrer l'enregistrement
+                                        </button>
+                                        <button type="button" id="inventoryVoiceCancel" class="btn btn-lg btn-outline-secondary">
+                                            <i class="bi bi-arrow-counterclockwise me-2"></i>Réinitialiser
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="card results-panel">
+                                <div class="card-header">
+                                    <h4 class="mb-0"><i class="bi bi-list-check me-2"></i>Résultats</h4>
+                                </div>
+                                <div class="card-body">
+                                    <div id="inventoryVoiceResults" class="voice-results mb-4">
+                                        <!-- Les résultats seront ajoutés ici -->
+                                        <div class="text-center text-muted py-5">
+                                            <i class="bi bi-soundwave" style="font-size: 3rem;"></i>
+                                            <p class="mt-3">Lancez l'enregistrement pour voir les résultats ici</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-end">
+                                        <button type="button" id="inventoryVoiceConfirm" class="btn gradient-button btn-lg" disabled>
+                                            <i class="bi bi-check-circle me-2"></i>Ajouter à l'inventaire
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/voice-service.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const inventoryVoiceRecognition = new InventoryVoiceRecognition({
+        statusElement: 'inventoryVoiceStatus',
+        visualizerElement: 'inventoryVoiceVisualizer',
+        timerElement: 'inventoryVoiceTimer',
+        resultsElement: 'inventoryVoiceResults',
+        startStopButton: 'inventoryStartStopRecording',
+        confirmButton: 'inventoryVoiceConfirm',
+        cancelButton: 'inventoryVoiceCancel',
+        onSuccess: function(result) {
+            // Notification
+            notificationManager.success(`${result.added_count} article(s) ajouté(s) avec succès à l'inventaire`);
+        },
+        onError: function(error) {
+            notificationManager.error("Erreur lors de l'ajout des articles: " + error);
+        }
+    });
+
+});
+</script>
+{% endblock %}

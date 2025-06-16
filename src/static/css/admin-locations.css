@@ -1,0 +1,183 @@
+/* Styles spécifiques pour la page d'administration des emplacements */
+
+/* Structure générale */
+.location-container {
+  padding: 0.5rem;
+}
+
+/* Styles des panneaux de gestion */
+.location-panel {
+  background-color: var(--theme-bg-content-card, #1E2229);
+  border: 1px solid var(--theme-border-color, #343a40);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  height: 100%;
+}
+
+.location-panel .card-header {
+  border-bottom: none;
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+}
+
+/* Alerte info avec fond sombre */
+.alert-info {
+  background-color: rgba(23, 162, 184, 0.15);
+  border-color: rgba(23, 162, 184, 0.3);
+  color: #17a2b8;
+}
+
+/* Liste des éléments */
+.list-group-item {
+  background-color: var(--theme-bg-content-panel-item, #22262E); /* Slightly different from card for depth */
+  border-color: var(--theme-border-light, rgba(255, 255, 255, 0.08));
+  color: var(--theme-text-primary, #EAEAEA);
+}
+
+/* Éléments de la liste */
+.location-tree .list-group-item {
+  background-color: var(--theme-bg-content-panel-item, #22262E);
+  border: 1px solid var(--theme-border-ultralight, rgba(255, 255, 255, 0.05)); /* Subtle border for tree items */
+  margin-bottom: 0.25rem;
+  border-radius: var(--border-radius-sm);
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent; /* This will be overridden by specific item types */
+  padding: 0.75rem 1rem;
+  color: var(--theme-text-primary, #EAEAEA);
+}
+
+.location-tree .list-group-item:hover {
+  background-color: var(--theme-bg-content-panel-item-hover, #2c3136);
+}
+
+/* Styles spécifiques pour chaque niveau hiérarchique */
+.location-tree .zone-item {
+  border-left-color: var(--primary-color);
+}
+
+.location-tree .furniture-item {
+  border-left-color: var(--success-color);
+  margin-left: 20px;
+}
+
+.location-tree .drawer-item {
+  border-left-color: var(--danger-color);
+  margin-left: 40px;
+}
+
+/* Badges */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35em 0.65em;
+}
+
+/* Boutons d'action */
+.action-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  margin-left: 0.25rem;
+  opacity: 0.85;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  opacity: 1;
+}
+
+.btn-group .action-btn {
+  border-radius: var(--border-radius-sm) !important;
+  margin: 0 2px;
+}
+
+/* Message vide */
+.empty-message {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--theme-text-secondary, #A8A8A8);
+  font-style: italic;
+  background-color: var(--theme-bg-content-card, #1E2229); /* Match panel background */
+}
+
+/* Modales */
+.modal-content {
+  background-color: #2a2e33;
+  border: none;
+  box-shadow: 0 15px 25px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+  border-bottom: 1px solid #3a3f45;
+}
+
+.modal-footer {
+  border-top: 1px solid #3a3f45;
+}
+
+/* Formulaires dans les modales */
+.modal .form-control, .modal .form-select {
+  background-color: #343a40;
+  border: 1px solid #495057;
+  color: #f8f9fa;
+  transition: all 0.2s ease;
+}
+
+.modal .form-control:focus, .modal .form-select:focus {
+  background-color: #3a3f45;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 0.25rem rgba(0, 123, 255, 0.25);
+}
+
+.modal .form-control:disabled, .modal .form-select:disabled {
+  background-color: #2c3136;
+  color: #adb5bd;
+}
+
+.modal .form-label {
+  color: #adb5bd;
+  font-weight: 500;
+}
+
+/* Boutons dans les modales */
+.modal .btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.modal .btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.modal .btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.modal .btn-secondary {
+  background-color: #6c757d;
+  border-color: #6c757d;
+}
+
+/* Améliorations pour l'alert dans le modal de suppression */
+.modal .alert-warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  border-color: rgba(255, 193, 7, 0.3);
+  color: #ffc107;
+}
+
+/* Ajustements responsifs */
+@media (max-width: 768px) {
+  .location-panels-row {
+    flex-direction: column;
+  }
+  
+  .location-panel {
+    margin-bottom: 1rem;
+  }
+  
+  .action-btn {
+    padding: 0.2rem 0.4rem;
+  }
+}

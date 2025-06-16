@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuration de la Base de Données{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <div class="row">
+        <div class="col-md-12 mb-4 d-flex justify-content-between align-items-center">
+            <h2 class="section-title-underline mb-0"><i class="bi bi-database-gear me-2"></i>Configuration de la Base de Données</h2>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-body">
+            {# Affichage des messages flash standards (ex: succès/erreur après POST) #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {# Affichage du message d'information spécifique à la page (pour GET) #}
+            {% if page_info_message and page_info_category %}
+                <div class="alert alert-{{ page_info_category }} alert-dismissible fade show" role="alert">
+                    {{ page_info_message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endif %}
+
+            <p><strong>Type de base de données actif :</strong> 
+                <span class="badge bg-info text-dark">
+                    {{ db_type | upper }}
+                </span>
+            </p>
+
+            {% if db_type == 'postgresql' %}
+                <p><strong>Host:</strong> {{ config.host | default('Non défini') }}</p>
+                <p><strong>Database:</strong> {{ config.database | default('Non défini') }}</p>
+                <p><strong>User:</strong> {{ config.user | default('Non défini') }}</p>
+                <p><strong>Port:</strong> {{ config.port | default('Non défini') }}</p>
+                <hr>
+                <h5>Modifier la Configuration PostgreSQL</h5>
+                <p class="text-muted">Ces modifications ne s'appliqueront qu'après un redémarrage de l'application.</p>
+                <form method="POST" action="{{ url_for('admin.db_config') }}">
+                    <div class="mb-3">
+                        <label for="host" class="form-label">Hôte</label>
+                        <input type="text" class="form-control" id="host" name="host" value="{{ config.host | default('') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="database" class="form-label">Nom de la base de données</label>
+                        <input type="text" class="form-control" id="database" name="database" value="{{ config.database | default('') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="user" class="form-label">Utilisateur</label>
+                        <input type="text" class="form-control" id="user" name="user" value="{{ config.user | default('') }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Laisser vide pour ne pas changer">
+                    </div>
+                    <div class="mb-3">
+                        <label for="port" class="form-label">Port</label>
+                        <input type="text" class="form-control" id="port" name="port" value="{{ config.port | default('5432') }}" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Sauvegarder la Configuration PostgreSQL</button>
+                </form>
+            {% elif db_type == 'sqlite' %}
+                <p class="mt-3">{{ config.message | default("SQLite est actif. La configuration de la base de données se fait via les variables d'environnement dans le fichier .env.") }}</p>
+                <p>Pour changer de base de données ou modifier le nom du fichier SQLite, veuillez éditer votre fichier <code>.env</code> et redémarrer l'application.</p>
+                <pre class="bg-dark text-light p-3 rounded"><code># Exemple de configuration .env pour SQLite
+DB_TYPE=sqlite
+# SQLITE_DB_NAME=votre_base.db (optionnel, défaut: jpjr.db à la racine du projet)</code></pre>
+            {% else %}
+                <div class="alert alert-danger" role="alert">
+                    <p class="mb-0">Le type de base de données configuré ('{{ db_type }}') n'est pas reconnu.</p>
+                    <p class="mb-0">Veuillez vérifier la variable <code>DB_TYPE</code> dans votre fichier <code>.env</code>. Les valeurs valides sont <code>postgresql</code> ou <code>sqlite</code>.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

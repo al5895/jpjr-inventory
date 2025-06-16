@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}Liste des Articles - Administration{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <div class="row">
+        <div class="col-md-12 mb-4 d-flex justify-content-between align-items-center">
+            <h2 class="section-title-underline mb-0"><i class="bi bi-list-ul me-2"></i>Liste des Articles</h2>
+            <div>
+                <a href="{{ url_for('admin.add_item') }}" class="btn btn-success">
+                    <i class="bi bi-plus-circle"></i> Ajouter un article
+                </a>
+                <a href="{{ url_for('reports.generate_all_items_pdf') }}" class="btn btn-info ms-2" target="_blank">
+                    <i class="bi bi-file-earmark-pdf"></i> Télécharger PDF
+                </a>
+                <button type="button" id="deleteUnborrowedTempItemsBtn" class="btn btn-outline-warning ms-2">
+                    <i class="bi bi-eraser"></i> Suppr. Temp. Non Empruntés
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card mb-4">
+        <div class="card-header">
+            
+            <div class="d-flex align-items-center">
+                <div class="btn-group me-3" role="group">
+                    <a href="{{ url_for('admin.items_list', filter='all') }}" 
+                       class="btn btn-sm {{ 'btn-secondary' if current_filter == 'all' else 'btn-outline-secondary' }}">
+                        Tous les articles
+                    </a>
+                    <a href="{{ url_for('admin.items_list', filter='conventional') }}" 
+                       class="btn btn-sm {{ 'btn-secondary' if current_filter == 'conventional' else 'btn-outline-secondary' }}">
+                        Conventionnels
+                    </a>
+                    <a href="{{ url_for('admin.items_list', filter='temporary') }}" 
+                       class="btn btn-sm {{ 'btn-secondary' if current_filter == 'temporary' else 'btn-outline-secondary' }}">
+                        Temporaires
+                    </a>
+                </div>
+                <span class="badge" style="background-color: var(--theme-bg-content-card); color: var(--theme-text-secondary);">{{ items_count }} article(s)</span>
+                
+                <!-- Search Form -->
+                <form method="GET" action="{{ url_for('admin.items_list') }}" class="d-flex ms-auto" style="max-width: 300px;">
+                    <input type="hidden" name="filter" value="{{ current_filter }}">
+                    <input class="form-control form-control-sm me-2" type="search" name="search" placeholder="Rechercher par nom..." aria-label="Rechercher" value="{{ search_term if search_term }}">
+                    <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
+                </form>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nom</th>
+                            <th>Zone</th>
+                            <th>Meuble</th>
+                            <th>Tiroir/Niveau</th>
+                            <th>État</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in items %}
+                        <tr {% if item.is_temporary %}class="temporary-item-row"{% endif %}>
+                            <td>
+                                {{ item.name }}
+                            </td>
+                            <td>
+                                {% if item.is_temporary %}
+                                <span class="text-muted">Non applicable</span>
+                                {% else %}
+                                {{ item.zone_name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.is_temporary %}
+                                <span class="text-muted">Non applicable</span>
+                                {% else %}
+                                {{ item.furniture_name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.is_temporary %}
+                                <span class="text-muted">Non applicable</span>
+                                {% else %}
+                                {{ item.drawer_name }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.is_borrowed %}
+                                <span class="badge" {% if item.borrower_name %}data-bs-toggle="tooltip" data-bs-placement="top" title="Emprunté par: {{ item.borrower_name }}"{% endif %}>Emprunté</span>
+                                {% else %}
+                                <span class="badge">Disponible</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group">
+                                    {% if item.is_borrowed %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Impossible de supprimer un article emprunté">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% else %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger delete-item-btn" 
+                                            data-item-id="{{ item.id }}" 
+                                            data-item-name="{{ item.name | e }}"
+                                            title="Supprimer l'article">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                    {% endif %}
+                                    {% if not item.is_temporary %}
+                                    <a href="{{ url_for('admin.edit_item', item_id=item.id) }}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div> <!-- row -->
+
+<!-- Modal de confirmation de suppression en masse -->
+<div class="modal fade" id="confirmBulkDeleteModal" tabindex="-1" aria-labelledby="confirmBulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow-lg">
+            <div class="modal-header bg-warning text-dark border-bottom-0">
+                <h5 class="modal-title" id="confirmBulkDeleteModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirmation de suppression en masse</h5>
+                <button type="button" class="btn-close btn-close-dark" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body py-4">
+                <p class="fs-5">Êtes-vous sûr de vouloir supprimer <strong>TOUS les articles temporaires non empruntés</strong> ?</p>
+                <p class="text-danger"><small><i class="bi bi-cone-striped"></i> Cette action est irréversible.</small></p>
+            </div>
+            <div class="modal-footer border-top-0">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><i class="bi bi-x-circle me-1"></i>Annuler</button>
+                <button type="button" class="btn btn-danger" id="executeBulkDeleteBtn"><i class="bi bi-trash-fill me-1"></i>Oui, supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    // --- Individual Item Delete Logic (Two-Step Click Confirmation) ---
+    const deleteButtons = document.querySelectorAll('.delete-item-btn');
+    let confirmTimeout = null;
+    let lastClickedButton = null;
+    const originalIconHTML = '<i class="bi bi-trash"></i>'; // Icône initiale
+    const confirmIconHTML = '<i class="bi bi-check-lg"></i>'; // Icône pour confirmer (coche)
+
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function(event) {
+            event.preventDefault(); 
+            const itemId = this.dataset.itemId;
+            const itemName = this.dataset.itemName;
+            const row = this.closest('tr');
+
+            const revertButtonAppearance = (btn) => {
+                btn.innerHTML = originalIconHTML;
+                btn.classList.remove('btn-danger'); // Enlève la classe pour fond plein
+                btn.classList.add('btn-outline-danger'); // Remet la classe pour contour
+                btn.title = "Supprimer l'article";
+                delete btn.dataset.confirming;
+            };
+
+            if (lastClickedButton === this && this.dataset.confirming === 'true') {
+                clearTimeout(confirmTimeout);
+                revertButtonAppearance(this);
+                lastClickedButton = null;
+
+                fetch("{{ url_for('admin.delete_item', item_id=0) }}".replace('0', itemId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' 
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(errData => { throw new Error(errData.error || `Erreur HTTP ${response.status}`); })
+                                         .catch(() => { throw new Error(`Erreur HTTP ${response.status}`); });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        notificationManager.show(data.message || `Article "${itemName}" supprimé.`, 'success');
+                        if (row) row.remove();
+                        const itemsCountBadge = document.querySelector('.card-header .badge');
+                        if (itemsCountBadge) {
+                            let countText = itemsCountBadge.textContent.match(/(\d+)/);
+                            if (countText && countText[0]) {
+                                let currentCount = parseInt(countText[0]);
+                                currentCount = Math.max(0, currentCount - 1);
+                                itemsCountBadge.textContent = currentCount + (currentCount === 1 ? " article" : " articles");
+                            } else {
+                                itemsCountBadge.textContent = "0 articles";
+                            }
+                        }
+                    } else {
+                        notificationManager.show(data.error || 'Erreur lors de la suppression.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur de suppression:', error);
+                    notificationManager.show(error.message || 'Une erreur réseau est survenue.', 'error');
+                });
+
+            } else {
+                if (lastClickedButton && lastClickedButton.dataset.confirming === 'true') {
+                    clearTimeout(confirmTimeout);
+                    revertButtonAppearance(lastClickedButton);
+                }
+                this.dataset.confirming = 'true';
+                lastClickedButton = this;
+                this.innerHTML = confirmIconHTML; // Change l'icône
+                this.classList.remove('btn-outline-danger'); // Enlève la classe de contour
+                this.classList.add('btn-danger'); // Ajoute la classe pour fond plein rouge
+                this.title = "Cliquez à nouveau pour confirmer la suppression";
+
+                confirmTimeout = setTimeout(() => {
+                    if (this.dataset.confirming === 'true') {
+                        revertButtonAppearance(this);
+                        if (lastClickedButton === this) lastClickedButton = null;
+                    }
+                }, 3500); 
+            }
+        });
+    });
+
+    // --- Bulk Delete Temporary Unborrowed Items Logic (Custom Modal) ---
+    const deleteTempBtn = document.getElementById('deleteUnborrowedTempItemsBtn');
+    const confirmBulkDeleteModalElement = document.getElementById('confirmBulkDeleteModal');
+    
+    if (deleteTempBtn && confirmBulkDeleteModalElement) {
+        const confirmBulkDeleteModal = new bootstrap.Modal(confirmBulkDeleteModalElement);
+        const executeBulkDeleteBtn = document.getElementById('executeBulkDeleteBtn');
+
+        deleteTempBtn.addEventListener('click', function() {
+            confirmBulkDeleteModal.show();
+        });
+
+        if (executeBulkDeleteBtn) {
+            executeBulkDeleteBtn.addEventListener('click', function() {
+                fetch("{{ url_for('admin.delete_unborrowed_temporary_items') }}", {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        // 'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' 
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        notificationManager.show(data.message || `${data.count || 0} article(s) temporaire(s) supprimé(s).`, 'success');
+                        if (data.count > 0 || (data.message && !data.message.includes("Aucun article"))) {
+                            setTimeout(() => window.location.reload(), 1500); // Shorter delay for reload
+                        }
+                    } else {
+                        notificationManager.show(data.error || 'Erreur lors de la suppression des articles temporaires.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la suppression des articles temporaires:', error);
+                    notificationManager.show('Une erreur réseau est survenue lors de la tentative de suppression.', 'error');
+                })
+                .finally(() => {
+                    confirmBulkDeleteModal.hide();
+                });
+            });
+        }
+    } else {
+        if (!deleteTempBtn) console.error("Bouton 'deleteUnborrowedTempItemsBtn' non trouvé.");
+        if (!confirmBulkDeleteModalElement) console.error("Modal 'confirmBulkDeleteModal' non trouvée.");
+    }
+});
+</script>
+{% endblock %}

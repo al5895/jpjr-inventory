@@ -1,4 +1,4 @@
-# JPJR
+# JPJR / Je prends, je rends
 
 Créé par **Les Frères Poulain**.
 

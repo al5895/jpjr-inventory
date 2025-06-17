@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/lfpoulin/jpjr:latest
+    image: ghcr.io/lfpoulain/jpjr:latest
     container_name: jpjr_app
     env_file:
       - .env

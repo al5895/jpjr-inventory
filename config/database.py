@@ -44,9 +44,11 @@ def get_connection_string():
     """
     if DB_TYPE == 'sqlite':
         # Construire le chemin absolu vers le fichier .db pour SQLite
-        # Le fichier est placé à la racine du projet (un niveau au-dessus de 'src' ou 'config')
+        # Le fichier est placé dans le dossier 'data' à la racine du projet
         project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        sqlite_db_path = os.path.join(project_root, SQLITE_DB_NAME)
+        data_dir = os.path.join(project_root, 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        sqlite_db_path = os.path.join(data_dir, SQLITE_DB_NAME)
         print(f"INFO: Utilisation de la base de données SQLite: {sqlite_db_path}")
         return f"sqlite:///{sqlite_db_path}"
     

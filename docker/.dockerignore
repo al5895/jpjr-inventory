@@ -1,0 +1,20 @@
+# Exclure les fichiers/dossiers inutiles du contexte Docker
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.env
+.env.*
+.git
+.gitignore
+docs/
+*.md
+*.log
+*.DS_Store
+.vscode/
+.idea/
+
+# Exclure les tests si non nécessaires
+# tests/

@@ -1,0 +1,11 @@
+services:
+  app:
+    image: ghcr.io/lfpoulin/jpjr:latest
+    container_name: jpjr_app
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    ports:
+      - "5001:5001"
+    restart: unless-stopped

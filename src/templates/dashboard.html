@@ -3,290 +3,365 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12 mb-4">
-        <h2 class="section-title-underline mb-3">Bonjour {{ user.name }}</h2>
+        <div class="d-flex justify-content-between align-items-center">
+            <h2 class="section-title-underline mb-0">Bonjour {{ user.name }}</h2>
+            <div>
+                <a href="{{ url_for('main.my_borrows') }}" class="btn btn-outline-primary">
+                    <i class="bi bi-list-check"></i> Mes emprunts
+                </a>
+                <a href="{{ url_for('admin.out_of_stock') }}" class="btn btn-outline-warning ms-2">
+                    <i class="bi bi-exclamation-triangle"></i> Stock épuisé
+                </a>
+                {% if user.is_admin %}
+                <a href="{{ url_for('admin.items_list') }}" class="btn btn-outline-secondary ms-2">
+                    <i class="bi bi-gear"></i> Administration
+                </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
+<!-- Notifications de stock -->
+<div id="stockAlerts" class="row mb-4">
+    <!-- Les alertes seront ajoutées ici dynamiquement -->
+</div>
+
 <div class="row">
+    <!-- Colonne de gauche : Formulaire d'emprunt -->
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
-                <h3 class="card-title mb-4">Emprunter du matériel</h3>
-                <form id="borrowForm">
-                    <!-- Liste des articles à emprunter -->
-                    <div id="itemsList">
-                        <!-- Les articles sélectionnés seront ajoutés ici -->
-                    </div>
+                <h3 class="card-title mb-4">
+                    <i class="bi bi-plus-circle me-2"></i>Emprunter du matériel
+                </h3>
+                
+                <!-- Sélection d'articles -->
+                <div class="mb-3">
+                    <label for="itemSelect" class="form-label">Choisir un article</label>
+                    <select class="form-select" id="itemSelect">
+                        <option value="">-- Sélectionner un article --</option>
+                        {% for item in available_items %}
+                        <option value="{{ item.id }}" 
+                                data-name="{{ item.name }}" 
+                                data-stock="{{ item.stock }}"
+                                data-location="{{ item.location_info }}">
+                            {{ item.name }} (Stock: {{ item.stock }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-                    <div class="mb-3">
-                        <button type="button" class="btn gradient-button w-100" data-bs-toggle="modal" data-bs-target="#addItemModal">
-                            <i class="bi bi-plus-circle"></i> Ajouter un article
-                        </button>
+                <!-- Sélection de quantité -->
+                <div class="mb-3" id="quantitySection" style="display: none;">
+                    <label for="quantity" class="form-label">Quantité à emprunter</label>
+                    <div class="input-group">
+                        <button class="btn btn-outline-secondary" type="button" id="decreaseQty">-</button>
+                        <input type="number" class="form-control text-center" id="quantity" value="1" min="1" max="1">
+                        <button class="btn btn-outline-secondary" type="button" id="increaseQty">+</button>
                     </div>
-                    
-                    <div class="mb-3">
-                        <button type="button" class="btn gradient-button w-100" data-bs-toggle="modal" data-bs-target="#addTempItemModal">
-                            <i class="bi bi-clock-history"></i> Ajouter un article temporaire
-                        </button>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <button type="button" id="voiceRecognitionBtn" class="btn gradient-button voice-btn w-100">
-                            <i class="bi bi-mic-fill"></i> Ajouter des articles par reconnaissance vocale
-                        </button>
-                    </div>
-                    
-                    <!-- Bouton de reconnaissance vocale d'inventaire retiré - désormais dans l'administration -->
+                    <small class="text-muted">Stock disponible: <span id="availableStock">0</span></small>
+                </div>
 
-                    <div class="mb-3">
-                        <label for="return_date" class="form-label">Date de retour prévue</label>
-                        <input type="text" class="form-control" id="return_date" name="return_date" required 
-                               placeholder="Sélectionnez une date" autocomplete="off">
-                    </div>
-                    <div class="text-end mt-3">
-                        <button type="submit" class="btn gradient-button">Emprunter</button>
-                    </div>
-                </form>
+                <!-- Bouton d'ajout -->
+                <div class="mb-3" id="addSection" style="display: none;">
+                    <button type="button" class="btn btn-primary w-100" id="addToCart">
+                        <i class="bi bi-cart-plus"></i> Ajouter au panier
+                    </button>
+                </div>
+
+                <!-- Articles temporaires -->
+                <div class="mb-3">
+                    <button type="button" class="btn btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#tempItemModal">
+                        <i class="bi bi-clock-history"></i> Ajouter un article temporaire
+                    </button>
+                </div>
+
+                <!-- Date de retour -->
+                <div class="mb-3">
+                    <label for="returnDate" class="form-label">Date de retour prévue</label>
+                    <input type="date" class="form-control" id="returnDate" required>
+                </div>
+
+                <!-- Bouton d'emprunt -->
+                <div class="text-center">
+                    <button type="button" class="btn btn-success btn-lg" id="borrowItems" disabled>
+                        <i class="bi bi-check-circle"></i> Emprunter les articles
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- Colonne de droite : Panier -->
     <div class="col-md-6">
         <div class="card">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h3 class="card-title mb-0">Articles à emprunter</h3>
+                    <h3 class="card-title mb-0">
+                        <i class="bi bi-cart me-2"></i>Panier d'emprunt
+                    </h3>
+                    <span class="badge bg-primary" id="cartCount">0</span>
                 </div>
-                <div id="itemsQueue" class="mt-3">
-                    <!-- Liste des articles en cours d'ajout -->
-                    <p class="text-center text-muted">Aucun article sélectionné</p>
+                
+                <div id="cartItems">
+                    <div class="text-center text-muted py-4">
+                        <i class="bi bi-cart-x display-4 d-block mb-2"></i>
+                        <p>Aucun article sélectionné</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Template pour les éléments d'article -->
-<template id="itemTemplate">
-    <div class="item-entry mb-3">
-        <div class="d-flex justify-content-between align-items-center border rounded p-2">
-            <div class="item-details">
-                <div class="item-name fw-bold"></div>
-                <div class="item-location text-muted small"></div>
-            </div>
-            <button type="button" class="btn remove-item dashboard-delete-btn" title="Supprimer cet article">
-                <i class="fas fa-trash-alt"></i>
-            </button>
-            <input type="hidden" class="item-id-input" name="item_ids[]">
-            <input type="hidden" class="item-type-input" name="item_types[]">
-        </div>
-    </div>
-</template>
-
-<!-- Template pour les emprunts -->
-<template id="borrowTemplate">
-    <div class="borrow-item mb-3 border rounded p-3">
-        <div class="d-flex justify-content-between">
-            <h5 class="mb-2"></h5>
-            <button class="btn btn-success btn-sm return-item">Retourner</button>
-        </div>
-        <div>
-            <p class="mb-1 d-flex">
-                <span class="me-3"><strong>Emprunté le:</strong> <span class="borrow-date"></span></span>
-                <span><strong>Retour prévu:</strong> <span class="return-date"></span></span>
-            </p>
-            <div class="location-info d-none mt-2">
-                <p class="mb-0"><strong>Localisation:</strong></p>
-                <ul class="list-unstyled ps-3 mb-0">
-                    <li class="zone-info d-none">Zone: <span></span></li>
-                    <li class="mobilier-info d-none">Mobilier: <span></span></li>
-                    <li class="niveau-info d-none">Niveau/Tiroir: <span></span></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</template>
-
-<!-- Modal pour l'ajout d'article -->
-<div class="modal fade" id="addItemModal" tabindex="-1" aria-labelledby="addItemModalLabel" aria-hidden="true">
+<!-- Modal pour article temporaire -->
+<div class="modal fade" id="tempItemModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addItemModalLabel">Ajouter un article</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title">Ajouter un article temporaire</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="addItemForm">
-
-
-                    <div class="mb-3 item-search-container">
-                        <label for="itemName" class="form-label">Nom de l'article</label>
-                        <div class="position-relative">
-                            <input type="text" class="form-control" id="itemName" required>
-                            <div class="suggestions-list d-none"></div>
-                        </div>
-                    </div>
-
-                    <div id="locationFields">
-                        <div class="mb-3">
-                            <label for="itemZone" class="form-label">Zone <span class="text-danger">*</span></label>
-                            <select class="form-select" id="itemZone" required>
-                                <option value="">Sélectionnez une zone</option>
-                                <!-- Les zones seront chargées dynamiquement -->
-                            </select>
-
-                        </div>
-                        <div class="mb-3">
-                            <label for="itemFurniture" class="form-label">Mobilier <span class="text-danger">*</span></label>
-                            <select class="form-select" id="itemFurniture" required disabled>
-                                <option value="">Sélectionnez d'abord une zone</option>
-                                <!-- Les meubles seront chargés dynamiquement -->
-                            </select>
-
-                        </div>
-                        <div class="mb-3">
-                            <label for="itemDrawer" class="form-label">Niveau/Tiroir <span class="text-danger">*</span></label>
-                            <select class="form-select" id="itemDrawer" required disabled>
-                                <option value="">Sélectionnez d'abord un meuble</option>
-                                <!-- Les tiroirs seront chargés dynamiquement -->
-                            </select>
-
-                        </div>
-
-                    </div>
-                </form>
+                <div class="mb-3">
+                    <label for="tempItemName" class="form-label">Nom de l'article</label>
+                    <input type="text" class="form-control" id="tempItemName" placeholder="Ex: Tournevis emprunté">
+                </div>
+                <div class="mb-3">
+                    <label for="tempItemQty" class="form-label">Quantité</label>
+                    <input type="number" class="form-control" id="tempItemQty" value="1" min="1">
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn gradient-button" id="saveItem">Ajouter et sélectionner</button>
+                <button type="button" class="btn btn-primary" id="addTempItem">Ajouter</button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Modal pour la reconnaissance vocale (articles temporaires) -->
-<div class="modal fade voice-modal" id="voiceRecognitionModal" tabindex="-1" aria-labelledby="voiceRecognitionModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="voiceRecognitionModalLabel">Reconnaissance vocale</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p id="recordingStatus">Prêt à enregistrer</p>
-
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" role="switch" id="temporaryOnlySwitch">
-                    <label class="form-check-label" for="temporaryOnlySwitch">Uniquement temporaire</label>
-                </div>
-                
-                <div id="voiceVisualizer" class="voice-visualizer">
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                    <div class="voice-bar"></div>
-                </div>
-                
-                <div id="recordingTimer" class="voice-timer">00:00</div>
-                
-                <div id="processingSpinner" class="processing-spinner d-none">
-                    <div class="spinner-border text-primary" role="status">
-                        <span class="visually-hidden">Chargement...</span>
-                    </div>
-                    <div class="spinner-text mt-2">Traitement en cours...</div>
-                </div>
-                
-                <div id="voiceResults" class="voice-results">
-                    <!-- Les résultats seront ajoutés ici -->
-                </div>
-            </div>
-            <div class="modal-footer voice-actions">
-                <button type="button" id="startStopRecording" class="btn gradient-button">
-                    <i class="bi bi-mic-fill me-1"></i> Démarrer
-                </button>
-                <button type="button" id="confirmItems" class="btn gradient-button" disabled>
-                    <i class="bi bi-check-circle me-1"></i> Confirmer
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Modal pour la reconnaissance vocale d'inventaire retirée - désormais dans l'administration -->
-
-<!-- Modal pour l'ajout d'article temporaire -->
-<div class="modal fade" id="addTempItemModal" tabindex="-1" aria-labelledby="addTempItemModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addTempItemModalLabel">Ajouter un article temporaire</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addTempItemForm">
-                    <div class="mb-3">
-                        <label for="tempItemName" class="form-label">Nom de l'article temporaire</label>
-                        <input type="text" class="form-control" id="tempItemName" placeholder="Ex: Tournevis cruciforme" required>
-                        <small class="text-muted d-block mt-1">Cet article ne sera pas enregistré dans l'inventaire permanent.</small>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn gradient-button" id="saveTempItem">Ajouter</button>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/location-core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/item-locations.js') }}"></script>
-<script src="{{ url_for('static', filename='js/voice-service.js') }}"></script>
 <script>
-// Gestion de la modal d'ajout d'article temporaire
-$(document).ready(function() {
-    console.log('Initialisation des gestionnaires d\'événements du dashboard...');
+document.addEventListener('DOMContentLoaded', function() {
+    const itemSelect = document.getElementById('itemSelect');
+    const quantitySection = document.getElementById('quantitySection');
+    const addSection = document.getElementById('addSection');
+    const quantityInput = document.getElementById('quantity');
+    const availableStock = document.getElementById('availableStock');
+    const cartItems = document.getElementById('cartItems');
+    const cartCount = document.getElementById('cartCount');
+    const borrowButton = document.getElementById('borrowItems');
+    const returnDateInput = document.getElementById('returnDate');
     
-    // Détacher tous les gestionnaires d'événements existants
-    $('#borrowForm').off('submit');
-    
-    // Réinitialiser la modal d'ajout d'article standard lorsqu'elle est fermée
-    $('#addItemModal').on('hidden.bs.modal', function () {
-        // Réinitialiser les champs de formulaire
-        $('#itemName').val('');
-        $('#itemZone').val('').prop('disabled', false);
-        $('#itemFurniture').val('').prop('disabled', true);
-        $('#itemDrawer').val('').prop('disabled', true);
-        
-        // Vider et masquer la liste de suggestions
-        $('.suggestions-list').empty().addClass('d-none');
+    let cart = [];
+    let currentItem = null;
+
+    // Définir la date minimale à aujourd'hui
+    const today = new Date().toISOString().split('T')[0];
+    returnDateInput.min = today;
+    returnDateInput.value = today;
+
+    // Sélection d'article
+    itemSelect.addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+        if (option.value) {
+            currentItem = {
+                id: option.value,
+                name: option.dataset.name,
+                stock: parseInt(option.dataset.stock),
+                location: option.dataset.location
+            };
+            
+            if (currentItem.stock > 0) {
+                quantityInput.max = currentItem.stock;
+                quantityInput.value = 1;
+                availableStock.textContent = currentItem.stock;
+                quantitySection.style.display = 'block';
+                addSection.style.display = 'block';
+            } else {
+                alert('Cet article est en rupture de stock !');
+                resetSelection();
+            }
+        } else {
+            resetSelection();
+        }
     });
-    
-    // Référence au bouton de sauvegarde de l'article temporaire
-    const saveTempItemBtn = document.getElementById('saveTempItem');
-    const tempItemNameInput = document.getElementById('tempItemName');
-    const tempItemModal = new bootstrap.Modal(document.getElementById('addTempItemModal'));
-    
-    // Gérer le clic sur le bouton "Ajouter" de la modal d'article temporaire
-    saveTempItemBtn.addEventListener('click', function() {
-        const tempItemName = tempItemNameInput.value.trim();
+
+    // Gestion des boutons +/-
+    document.getElementById('decreaseQty').addEventListener('click', function() {
+        const qty = parseInt(quantityInput.value);
+        if (qty > 1) quantityInput.value = qty - 1;
+    });
+
+    document.getElementById('increaseQty').addEventListener('click', function() {
+        const qty = parseInt(quantityInput.value);
+        const max = parseInt(quantityInput.max);
+        if (qty < max) quantityInput.value = qty + 1;
+    });
+
+    // Ajouter au panier
+    document.getElementById('addToCart').addEventListener('click', function() {
+        const quantity = parseInt(quantityInput.value);
         
-        if (!tempItemName) {
-            notificationManager.error('Veuillez saisir un nom d\'article.');
+        // Vérifier si l'article est déjà dans le panier
+        const existingIndex = cart.findIndex(item => item.id === currentItem.id);
+        
+        if (existingIndex >= 0) {
+            cart[existingIndex].quantity += quantity;
+        } else {
+            cart.push({
+                ...currentItem,
+                quantity: quantity,
+                isTemporary: false
+            });
+        }
+        
+        updateCartDisplay();
+        resetSelection();
+        
+        // Notification
+        showNotification(`${currentItem.name} ajouté au panier (x${quantity})`, 'success');
+    });
+
+    // Article temporaire
+    document.getElementById('addTempItem').addEventListener('click', function() {
+        const name = document.getElementById('tempItemName').value.trim();
+        const quantity = parseInt(document.getElementById('tempItemQty').value);
+        
+        if (!name) {
+            alert('Veuillez entrer un nom d\'article');
             return;
         }
         
-        // Créer un nouvel item temporaire et l'ajouter à la liste
-        // Utiliser la fonction addTemporaryItem qui existe déjà dans main.js
-        addTemporaryItem(tempItemName);
+        cart.push({
+            id: 'temp_' + Date.now(),
+            name: name,
+            quantity: quantity,
+            location: 'Article temporaire',
+            isTemporary: true
+        });
+        
+        updateCartDisplay();
         
         // Réinitialiser et fermer la modal
-        tempItemNameInput.value = '';
-        tempItemModal.hide();
+        document.getElementById('tempItemName').value = '';
+        document.getElementById('tempItemQty').value = '1';
+        bootstrap.Modal.getInstance(document.getElementById('tempItemModal')).hide();
+        
+        showNotification(`${name} ajouté au panier (x${quantity})`, 'success');
     });
+
+    // Emprunter
+    document.getElementById('borrowItems').addEventListener('click', function() {
+        if (cart.length === 0) {
+            alert('Votre panier est vide !');
+            return;
+        }
+        
+        if (!returnDateInput.value) {
+            alert('Veuillez sélectionner une date de retour !');
+            return;
+        }
+        
+        const borrowData = {
+            items: cart,
+            return_date: returnDateInput.value
+        };
+        
+        fetch('/api/loans/create-with-quantities', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(borrowData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Emprunt créé avec succès !', 'success');
+                cart = [];
+                updateCartDisplay();
+                resetSelection();
+                // Recharger la page pour mettre à jour les stocks
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showNotification('Erreur: ' + (data.error || 'Erreur inconnue'), 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            showNotification('Erreur de connexion', 'error');
+        });
+    });
+
+    function resetSelection() {
+        itemSelect.value = '';
+        quantitySection.style.display = 'none';
+        addSection.style.display = 'none';
+        currentItem = null;
+    }
+
+    function updateCartDisplay() {
+        cartCount.textContent = cart.length;
+        
+        if (cart.length === 0) {
+            cartItems.innerHTML = `
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-cart-x display-4 d-block mb-2"></i>
+                    <p>Aucun article sélectionné</p>
+                </div>
+            `;
+            borrowButton.disabled = true;
+        } else {
+            cartItems.innerHTML = cart.map(item => `
+                <div class="cart-item border rounded p-3 mb-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${item.name}</h6>
+                            <small class="text-muted">${item.location}</small>
+                            <div class="mt-1">
+                                <span class="badge bg-primary">Quantité: ${item.quantity}</span>
+                                ${item.isTemporary ? '<span class="badge bg-warning ms-1">Temporaire</span>' : ''}
+                            </div>
+                        </div>
+                        <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart('${item.id}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            borrowButton.disabled = false;
+        }
+    }
+
+    // Fonction globale pour supprimer du panier
+    window.removeFromCart = function(itemId) {
+        cart = cart.filter(item => item.id !== itemId);
+        updateCartDisplay();
+        showNotification('Article retiré du panier', 'info');
+    };
+
+    function showNotification(message, type) {
+        // Créer une notification simple
+        const alert = document.createElement('div');
+        alert.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+        alert.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+        alert.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(alert);
+        
+        // Auto-supprimer après 3 secondes
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 3000);
+    }
 });
 </script>
 {% endblock %}

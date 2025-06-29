@@ -8,11 +8,11 @@ from datetime import datetime
 # Création du blueprint
 loans_api_bp = Blueprint('loans_api', __name__, url_prefix='/api/loans')
 
-# Créer un emprunt
+# Créer un emprunt (ancienne version - conservée pour compatibilité)
 @loans_api_bp.route('/create', methods=['POST'])
 def create_loan():
     """
-    API pour créer un nouvel emprunt
+    API pour créer un nouvel emprunt (ancienne version)
     """
     if 'user_id' not in session:
         return jsonify({'error': 'Non authentifié'}), 401
@@ -82,6 +82,7 @@ def create_loan():
             new_borrow = Borrow(
                 user_id=user_id,
                 item_id=item_id,
+                quantity=1,  # Ancienne version = toujours 1
                 borrow_date=datetime.now(),
                 expected_return_date=expected_return_date
             )
@@ -113,11 +114,139 @@ def create_loan():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+# NOUVELLE VERSION : Créer un emprunt avec gestion des quantités
+@loans_api_bp.route('/create-with-quantities', methods=['POST'])
+def create_loan_with_quantities():
+    """
+    API pour créer un emprunt avec gestion des quantités et décrément automatique du stock
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Non authentifié'}), 401
+    
+    user_id = session['user_id']
+    data = request.json
+    items = data.get('items', [])
+    return_date_str = data.get('return_date')
+    
+    if not items or len(items) == 0:
+        return jsonify({'error': 'Aucun article sélectionné pour l\'emprunt'}), 400
+    
+    if not return_date_str:
+        return jsonify({'error': 'Date de retour prévue requise'}), 400
+    
+    # Convertir la date de retour
+    try:
+        expected_return_date = datetime.fromisoformat(return_date_str)
+    except Exception as e:
+        return jsonify({'error': f'Format de date invalide: {str(e)}'}), 400
+    
+    # Vérifier que l'utilisateur existe
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({'error': 'Utilisateur non trouvé'}), 404
+    
+    # Import local pour éviter problème d'import circulaire
+    from src.models.notification import Notification
+
+    # Résultats de l'opération
+    results = {
+        'success': True,
+        'loans': [],
+        'notifications': []
+    }
+    
+    try:
+        for item_data in items:
+            item_id = item_data.get('id')
+            quantity = int(item_data.get('quantity', 1))
+            is_temporary = item_data.get('isTemporary', False)
+            item_name = item_data.get('name', '')
+            
+            if is_temporary:
+                # Créer un article temporaire
+                new_temp_item = Item(
+                    name=item_name,
+                    stock=quantity,
+                    is_temporary=True
+                )
+                db.session.add(new_temp_item)
+                db.session.flush()  # Pour obtenir l'ID
+                item = new_temp_item
+            else:
+                # Vérifier que l'article existe
+                item = db.session.get(Item, item_id)
+                if not item:
+                    results['loans'].append({
+                        'status': 'error',
+                        'error': 'Article non trouvé',
+                        'item_name': item_name
+                    })
+                    continue
+                
+                # Vérifier que le stock est suffisant
+                if item.stock < quantity:
+                    results['loans'].append({
+                        'status': 'error',
+                        'error': f'Stock insuffisant (disponible: {item.stock}, demandé: {quantity})',
+                        'item_name': item.name
+                    })
+                    continue
+            
+            # Créer l'emprunt
+            new_borrow = Borrow(
+                user_id=user_id,
+                item_id=item.id,
+                quantity=quantity,
+                borrow_date=datetime.utcnow(),
+                expected_return_date=expected_return_date
+            )
+            
+            db.session.add(new_borrow)
+            
+            # Décrémenter le stock
+            if not is_temporary:
+                item.decrease_stock(quantity)
+                
+                # Créer des notifications si nécessaire
+                if item.stock == 0:
+                    notification = Notification.create_stock_alert(item)
+                    if notification:
+                        results['notifications'].append(f"Stock épuisé pour '{item.name}'")
+                elif item.stock <= 2:
+                    notification = Notification.create_low_stock_alert(item)
+                    if notification:
+                        results['notifications'].append(f"Stock faible pour '{item.name}' (reste {item.stock})")
+            
+            # Ajouter à la liste des emprunts réussis
+            results['loans'].append({
+                'status': 'success',
+                'user_name': user.name,
+                'item_name': item.name,
+                'quantity': quantity,
+                'return_date': expected_return_date.strftime('%d/%m/%Y')
+            })
+        
+        # Commit des changements si au moins un emprunt a réussi
+        successful_loans = [loan for loan in results['loans'] if loan.get('status') == 'success']
+        if successful_loans:
+            db.session.commit()
+            results['message'] = f"{len(successful_loans)} emprunt(s) créé(s) avec succès"
+        else:
+            db.session.rollback()
+            results['success'] = False
+            results['error'] = "Aucun emprunt n'a pu être créé"
+        
+        return jsonify(results)
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 # Retourner un emprunt
 @loans_api_bp.route('/<int:loan_id>/return', methods=['POST'])
 def return_loan(loan_id):
     """
-    API pour retourner un emprunt
+    API pour retourner un emprunt et remettre en stock
     """
     if 'user_id' not in session:
         return jsonify({'error': 'Non authentifié'}), 401
@@ -132,23 +261,33 @@ def return_loan(loan_id):
         return jsonify({'error': 'Cet article a déjà été retourné'}), 400
     
     try:
-        # Marquer l'emprunt comme retourné
-        borrow.return_date = datetime.now()
-        borrow.returned = True
-        db.session.commit()
+        # Marquer l'emprunt comme retourné et remettre en stock
+        success = borrow.return_item()
         
-        return jsonify({
-            'success': True,
-            'loan': {
-                'id': borrow.id,
-                'user_id': borrow.user_id,
-                'user_name': borrow.user.name,
-                'item_id': borrow.item_id,
-                'item_name': borrow.item.name,
-                'borrow_date': borrow.borrow_date.isoformat(),
-                'return_date': borrow.return_date.isoformat()
-            }
-        })
+        if success:
+            # Supprimer les alertes de stock si le stock est rechargé
+            if borrow.item and borrow.item.stock > 0:
+                from src.models.notification import Notification
+                Notification.dismiss_stock_alerts(borrow.item)
+            
+            db.session.commit()
+            
+            return jsonify({
+                'success': True,
+                'loan': {
+                    'id': borrow.id,
+                    'user_id': borrow.user_id,
+                    'user_name': borrow.user.name,
+                    'item_id': borrow.item_id,
+                    'item_name': borrow.item.name,
+                    'quantity': borrow.quantity,
+                    'borrow_date': borrow.borrow_date.isoformat(),
+                    'return_date': borrow.return_date.isoformat()
+                }
+            })
+        else:
+            return jsonify({'error': 'L\'article était déjà retourné'}), 400
+            
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -159,17 +298,12 @@ def get_loans():
     """
     API pour récupérer la liste des emprunts
     """
-    print("API get_loans appelée avec params:", request.args)
-    
     if 'user_id' not in session:
-        print("Erreur: Utilisateur non authentifié")
         return jsonify({'error': 'Non authentifié'}), 401
     
     # Récupérer les paramètres de filtrage
     user_id = request.args.get('user_id') or session['user_id']  # Utiliser l'ID de l'utilisateur connecté par défaut
     active_only = request.args.get('active_only', 'false').lower() == 'true'
-    
-    print(f"Recherche des emprunts pour user_id={user_id}, active_only={active_only}")
     
     # Construire la requête de base
     query = db.session.query(Borrow)
@@ -188,7 +322,6 @@ def get_loans():
     results = []
     for borrow in borrows:
         item = borrow.item
-        expected_return_date = borrow.expected_return_date.strftime('%d/%m/%Y') if borrow.expected_return_date else None
         
         # Construire le résultat avec toutes les informations attendues par le frontend
         loan_data = {
@@ -197,10 +330,13 @@ def get_loans():
             'user_name': borrow.user.name,
             'item_id': item.id,
             'item_name': item.name,
+            'quantity': borrow.quantity,  # NOUVEAU: Quantité empruntée
             'borrow_date': borrow.borrow_date.isoformat(),  # Format ISO pour JavaScript
             'expected_return_date': borrow.expected_return_date.isoformat() if borrow.expected_return_date else None,
             'return_date': borrow.return_date.isoformat() if borrow.return_date else None,
-            'is_temporary': item.is_temporary
+            'is_temporary': item.is_temporary,
+            'is_overdue': borrow.is_overdue,  # NOUVEAU: En retard
+            'days_until_return': borrow.days_until_return  # NOUVEAU: Jours restants
         }
         
         # Ajouter les informations de localisation pour les articles conventionnels

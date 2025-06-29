@@ -9,21 +9,28 @@ from config.logging_config import setup_logging
 from src.models import db 
 from src.routes import blueprints 
 
-
 # Load environment variables
 load_dotenv()
-
-# Ensure data directory exists
-# os.makedirs('/data/database', exist_ok=True)  # No longer needed for PostgreSQL
 
 # Configuration de l'application
 app = Flask(__name__, 
     static_folder='static',  # Dossier pour les fichiers statiques
     static_url_path='/static'  # URL pour accéder aux fichiers statiques
 )
+
+# Configuration pour la production et le développement
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-key-replace-in-production')
 app.config['SQLALCHEMY_DATABASE_URI'] = get_connection_string()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Configuration spécifique pour Render
+if os.getenv('RENDER'):
+    # Configuration pour la production sur Render
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_timeout': 20,
+        'pool_recycle': -1,
+        'pool_pre_ping': True
+    }
 
 # Initialize extensions
 db.init_app(app)
@@ -155,10 +162,18 @@ if __name__ == '__main__':
     # Configure logging
     setup_logging(app)
     init_db()
-    # Le mode debug est contrôlé par la variable d'environnement FLASK_DEBUG
-    is_debug_mode = os.getenv('FLASK_DEBUG') == '1'
-    use_ssl = os.environ.get("USE_SSL", "true").lower() != "false"
-    if use_ssl:
-        app.run(host='0.0.0.0', port=5001, ssl_context='adhoc')
+    
+    # Configuration différente selon l'environnement
+    if os.getenv('RENDER'):
+        # Sur Render, utiliser le port fourni par la plateforme
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port, debug=False)
     else:
-        app.run(host='0.0.0.0', port=5001)
+        # En développement local
+        is_debug_mode = os.getenv('FLASK_DEBUG') == '1'
+        use_ssl = os.environ.get("USE_SSL", "true").lower() != "false"
+        if use_ssl:
+            app.run(host='0.0.0.0', port=5001, ssl_context='adhoc', debug=is_debug_mode)
+        else:
+            app.run(host='0.0.0.0', port=5001, debug=is_debug_mode)
+        

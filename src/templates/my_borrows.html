@@ -3,7 +3,13 @@
 {% block content %}
 <div class="row">
     <div class="col-md-12 mb-4">
-        <h2 class="section-title-underline mb-3">Mes emprunts</h2>
+    <div class="d-flex justify-content-between align-items-center">
+        <h2 class="section-title-underline mb-0">Mes emprunts</h2>
+        <div>
+            <a href="{{ url_for('main.dashboard') }}" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Faire un nouvel emprunt
+            </a>
+        </div>
     </div>
 </div>
 

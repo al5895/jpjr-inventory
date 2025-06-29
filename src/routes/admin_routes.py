@@ -17,6 +17,32 @@ from config.app_config import get_app_config_values, save_app_config_value
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
+# Décorateur pour vérifier les droits admin
+def admin_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Veuillez vous connecter', 'danger')
+            return redirect(url_for('main.index'))
+        
+        current_user = db.session.get(User, session['user_id'])
+        if not current_user or not current_user.is_admin:
+            flash('Accès refusé. Droits administrateur requis.', 'danger')
+            return redirect(url_for('main.dashboard'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+def login_required(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Veuillez vous connecter', 'danger')
+            return redirect(url_for('main.index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @admin_bp.route('/db-config', methods=['GET', 'POST'])
 def db_config():
@@ -124,9 +150,20 @@ def app_config():
 def admin_dashboard():
     return redirect(url_for('admin.items_list'))
 
-# Gestion des utilisateurs
+# Gestion des utilisateurs (SÉCURISÉ)
 @admin_bp.route('/users')
 def user_list():
+    # Vérification de connexion
+    if 'user_id' not in session:
+        flash('Veuillez vous connecter', 'danger')
+        return redirect(url_for('main.index'))
+    
+    # Vérification des droits admin
+    current_user = db.session.get(User, session['user_id'])
+    if not current_user or not current_user.is_admin:
+        flash('Accès refusé. Droits administrateur requis.', 'danger')
+        return redirect(url_for('main.dashboard'))
+    
     users_with_borrows = []
     users = db.session.query(User).order_by(User.name).all()
     
@@ -135,10 +172,14 @@ def user_list():
         users_with_borrows.append({
             'id': user.id,
             'name': user.name,
+            'email': user.email,
+            'is_admin': user.is_admin,
+            'is_super_admin': user.is_super_admin,
+            'role': user.role,
             'active_borrows_count': active_borrows
         })
     
-    return render_template('admin/user_list.html', users=users_with_borrows)
+    return render_template('admin/user_list.html', users=users_with_borrows, current_user=current_user)
 
 @admin_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
@@ -205,6 +246,8 @@ def items_list():
         item_dict = {
             'id': item.id,
             'name': item.name,
+            'stock': item.stock,  # NOUVEAU: ajouter le stock
+            'is_available': item.is_available,  # NOUVEAU: disponibilité
             'is_borrowed': is_borrowed,
             'is_temporary': item.is_temporary,
             'borrower_name': borrower_name  # Ajouter le nom de l'emprunteur
@@ -294,6 +337,7 @@ def add_item():
 
             new_item = Item(
                 name=name,
+                stock=int(request.form.get('stock', 1)),  # NOUVEAU: récupérer la quantité
                 zone_id=zone_id,
                 furniture_id=furniture_id,
                 drawer_id=drawer_id,
@@ -382,13 +426,9 @@ def delete_item(item_id):
 
     except SQLAlchemyError as e: # Être plus spécifique sur l'exception si possible
         db.session.rollback()
-        # Log l'erreur pour le débogage côté serveur
-        # current_app.logger.error(f"SQLAlchemyError lors de la suppression de l'article {item_id}: {str(e)}")
         return jsonify(success=False, error="Erreur de base de données lors de la suppression."), 500
     except Exception as e:
         db.session.rollback()
-        # Log l'erreur pour le débogage côté serveur
-        # current_app.logger.error(f"Erreur générique lors de la suppression de l'article {item_id}: {str(e)}")
         return jsonify(success=False, error=f"Une erreur est survenue: {str(e)}"), 500
 
 @admin_bp.route('/items/delete-unborrowed-temporary', methods=['POST'])
@@ -417,11 +457,9 @@ def delete_unborrowed_temporary_items():
 
     except SQLAlchemyError as e:
         db.session.rollback()
-        # current_app.logger.error(f"SQLAlchemyError lors de la suppression des articles temporaires: {str(e)}")
         return jsonify(success=False, error="Erreur de base de données lors de la suppression des articles temporaires."), 500
     except Exception as e:
         db.session.rollback()
-        # current_app.logger.error(f"Erreur générique lors de la suppression des articles temporaires: {str(e)}")
         return jsonify(success=False, error=f"Une erreur est survenue: {str(e)}"), 500
 
 # Gestion des emplacements
@@ -435,10 +473,169 @@ def location_admin():
     drawers = db.session.query(Drawer).order_by(Drawer.name).all()
     return render_template('admin/location.html', zones=zones, furnitures=furnitures, drawers=drawers)
 
-# Reconnaissance vocale d'inventaire
-@admin_bp.route('/inventory-voice')
-def inventory_voice_admin():
-    """
-    Page d'administration pour la reconnaissance vocale d'inventaire
-    """
-    return render_template('admin/inventory_voice.html')
+    
+
+@admin_bp.route('/users/promote-admin/<int:user_id>', methods=['POST'])
+def promote_to_admin(user_id):
+    """Promouvoir un utilisateur en admin (super-admin uniquement)"""
+    if 'user_id' not in session:
+        flash('Veuillez vous connecter', 'danger')
+        return redirect(url_for('main.index'))
+    
+    current_user = db.session.get(User, session['user_id'])
+    if not current_user or not current_user.is_super_admin:
+        flash('Accès refusé. Droits super-administrateur requis.', 'danger')
+        return redirect(url_for('admin.user_list'))
+    
+    user_to_promote = db.session.get(User, user_id)
+    if user_to_promote:
+        user_to_promote.is_admin = True
+        db.session.commit()
+        flash(f"{user_to_promote.name} a été promu administrateur.", "success")
+    else:
+        flash("Utilisateur non trouvé.", "danger")
+    
+    return redirect(url_for('admin.user_list'))
+
+@admin_bp.route('/users/promote-super-admin/<int:user_id>', methods=['POST'])
+def promote_to_super_admin(user_id):
+    """Promouvoir un utilisateur en super-admin (super-admin uniquement)"""
+    if 'user_id' not in session:
+        flash('Veuillez vous connecter', 'danger')
+        return redirect(url_for('main.index'))
+    
+    current_user = db.session.get(User, session['user_id'])
+    if not current_user or not current_user.is_super_admin:
+        flash('Accès refusé. Droits super-administrateur requis.', 'danger')
+        return redirect(url_for('admin.user_list'))
+    
+    user_to_promote = db.session.get(User, user_id)
+    if user_to_promote:
+        user_to_promote.is_super_admin = True
+        user_to_promote.is_admin = True  # Un super-admin est aussi admin
+        db.session.commit()
+        flash(f"{user_to_promote.name} a été promu super-administrateur.", "success")
+    else:
+        flash("Utilisateur non trouvé.", "danger")
+    
+    return redirect(url_for('admin.user_list'))
+
+@admin_bp.route('/users/demote/<int:user_id>', methods=['POST'])
+def demote_user(user_id):
+    """Rétrograder un utilisateur (super-admin uniquement)"""
+    if 'user_id' not in session:
+        flash('Veuillez vous connecter', 'danger')
+        return redirect(url_for('main.index'))
+    
+    current_user = db.session.get(User, session['user_id'])
+    if not current_user or not current_user.is_super_admin:
+        flash('Accès refusé. Droits super-administrateur requis.', 'danger')
+        return redirect(url_for('admin.user_list'))
+    
+    if user_id == current_user.id:
+        flash("Vous ne pouvez pas modifier vos propres droits.", "danger")
+        return redirect(url_for('admin.user_list'))
+    
+    user_to_demote = db.session.get(User, user_id)
+    if user_to_demote:
+        user_to_demote.is_admin = False
+        user_to_demote.is_super_admin = False
+        db.session.commit()
+        flash(f"{user_to_demote.name} a été rétrogradé en utilisateur normal.", "success")
+    else:
+        flash("Utilisateur non trouvé.", "danger")
+    
+    return redirect(url_for('admin.user_list'))
+
+@admin_bp.route('/items/<int:item_id>/update-stock', methods=['POST'])
+def update_item_stock(item_id):
+    """Mettre à jour le stock d'un article"""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Non authentifié'}), 401
+    
+    current_user = db.session.get(User, session['user_id'])
+    if not current_user or not current_user.is_admin:
+        return jsonify({'success': False, 'error': 'Droits administrateur requis'}), 403
+    
+    try:
+        data = request.get_json()
+        new_stock = data.get('stock')
+        
+        if new_stock is None or new_stock < 0:
+            return jsonify({'success': False, 'error': 'Stock invalide'}), 400
+        
+        item = db.session.get(Item, item_id)
+        if not item:
+            return jsonify({'success': False, 'error': 'Article non trouvé'}), 404
+        
+        old_stock = item.stock
+        item.stock = new_stock
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Stock mis à jour: {old_stock} → {new_stock}',
+            'old_stock': old_stock,
+            'new_stock': new_stock
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# NOUVELLE ROUTE : Page des articles épuisés
+@admin_bp.route('/out-of-stock')
+@login_required
+def out_of_stock():
+    """Page des articles épuisés"""
+    from src.models.item import Item
+    
+    # Articles épuisés (stock = 0)
+    out_of_stock_items = Item.query.filter_by(stock=0).all()
+    
+    # Articles en stock faible (stock 1-2)
+    low_stock_items = Item.query.filter(Item.stock.between(1, 2)).all()
+    
+    # Total des articles
+    total_items = Item.query.count()
+    
+    return render_template('out_of_stock.html', 
+                         out_of_stock_items=out_of_stock_items,
+                         low_stock_items=low_stock_items,
+                         total_items=total_items)
+
+# NOUVELLE ROUTE API : Ajustement rapide de stock
+@admin_bp.route('/api/adjust-stock', methods=['POST'])
+@login_required
+def adjust_stock():
+    """API pour ajuster rapidement le stock d'un article"""
+    try:
+        data = request.get_json()
+        item_id = data.get('item_id')
+        adjustment = data.get('adjustment')
+        
+        if not item_id or adjustment is None:
+            return jsonify({'success': False, 'error': 'Paramètres manquants'}), 400
+        
+        if adjustment < 1:
+            return jsonify({'success': False, 'error': 'La quantité doit être positive'}), 400
+        
+        item = db.session.get(Item, item_id)
+        if not item:
+            return jsonify({'success': False, 'error': 'Article non trouvé'}), 404
+        
+        old_stock = item.stock
+        item.stock += adjustment
+        db.session.commit()
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Stock de "{item.name}" mis à jour: {old_stock} → {item.stock}',
+            'old_stock': old_stock,
+            'new_stock': item.stock,
+            'item_name': item.name
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500

@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Recherche d'Articles - JPJR{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-4">
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2 class="section-title-underline mb-0">
+                    <i class="bi bi-search me-2"></i>Recherche d'articles
+                </h2>
+                <a href="{{ url_for('main.dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Retour au dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="row mb-4">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="searchInput" class="form-label">
+                            <i class="bi bi-search"></i> Rechercher un article
+                        </label>
+                        <input type="text" 
+                               class="form-control form-control-lg" 
+                               id="searchInput" 
+                               placeholder="Tapez le nom d'un article..."
+                               autocomplete="off">
+                    </div>
+                    <small class="text-muted">
+                        <i class="bi bi-lightbulb"></i> 
+                        Commencez à taper pour voir les résultats en temps réel
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Résultats de recherche -->
+    <div class="row">
+        <div class="col-md-10 mx-auto">
+            <div id="searchResults">
+                <!-- Message initial -->
+                <div class="text-center text-muted py-5" id="initialMessage">
+                    <i class="bi bi-search display-4 d-block mb-3"></i>
+                    <h4>Recherchez un article</h4>
+                    <p>Tapez dans la barre de recherche ci-dessus pour trouver des articles</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    let searchTimeout;
+
+    // Recherche en temps réel
+    searchInput.addEventListener('input', function() {
+        const query = this.value.trim();
+        
+        // Annuler la recherche précédente
+        clearTimeout(searchTimeout);
+        
+        if (query.length === 0) {
+            showInitialMessage();
+            return;
+        }
+        
+        if (query.length < 2) {
+            return; // Attendre au moins 2 caractères
+        }
+        
+        // Délai pour éviter trop de requêtes
+        searchTimeout = setTimeout(() => {
+            performSearch(query);
+        }, 300);
+    });
+
+    function showInitialMessage() {
+        searchResults.innerHTML = `
+            <div class="text-center text-muted py-5">
+                <i class="bi bi-search display-4 d-block mb-3"></i>
+                <h4>Recherchez un article</h4>
+                <p>Tapez dans la barre de recherche ci-dessus pour trouver des articles</p>
+            </div>
+        `;
+    }
+
+    function showLoading() {
+        searchResults.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Recherche...</span>
+                </div>
+                <p class="mt-2">Recherche en cours...</p>
+            </div>
+        `;
+    }
+
+    function performSearch(query) {
+        showLoading();
+        
+        fetch(`/api/search-items?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                displayResults(data.items || [], query);
+            })
+            .catch(error => {
+                console.error('Erreur de recherche:', error);
+                searchResults.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Erreur lors de la recherche. Veuillez réessayer.
+                    </div>
+                `;
+            });
+    }
+
+    function displayResults(items, query) {
+        if (items.length === 0) {
+            searchResults.innerHTML = `
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-search display-4 d-block mb-3"></i>
+                    <h4>Aucun résultat</h4>
+                    <p>Aucun article trouvé pour "<strong>${query}</strong>"</p>
+                </div>
+            `;
+            return;
+        }
+
+        const resultsHtml = `
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-list-ul"></i> 
+                        ${items.length} résultat(s) pour "<strong>${query}</strong>"
+                    </h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Article</th>
+                                    <th>Stock</th>
+                                    <th>Zone</th>
+                                    <th>Meuble</th>
+                                    <th>Tiroir/Niveau</th>
+                                    <th>État</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${items.map(item => `
+                                    <tr>
+                                        <td>
+                                            <strong>${highlightText(item.name, query)}</strong>
+                                            ${item.is_temporary ? '<span class="badge bg-warning text-dark ms-2">Temporaire</span>' : ''}
+                                        </td>
+                                        <td>
+                                            ${getStockBadge(item.stock)}
+                                        </td>
+                                        <td>${item.zone_name || 'N/A'}</td>
+                                        <td>${item.furniture_name || 'N/A'}</td>
+                                        <td>${item.drawer_name || 'N/A'}</td>
+                                        <td>
+                                            ${item.is_borrowed ? 
+                                                '<span class="badge bg-secondary">Emprunté</span>' : 
+                                                '<span class="badge bg-success">Disponible</span>'
+                                            }
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        searchResults.innerHTML = resultsHtml;
+    }
+
+    function highlightText(text, query) {
+        const regex = new RegExp(`(${query})`, 'gi');
+        return text.replace(regex, '<mark>$1</mark>');
+    }
+
+    function getStockBadge(stock) {
+        if (stock === 0) {
+            return '<span class="badge bg-danger"><i class="bi bi-x-circle"></i> 0</span>';
+        } else if (stock <= 2) {
+            return `<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle"></i> ${stock}</span>`;
+        } else {
+            return `<span class="badge bg-success"><i class="bi bi-check-circle"></i> ${stock}</span>`;
+        }
+    }
+
+    // Focus automatique sur la barre de recherche
+    searchInput.focus();
+});
+</script>
+{% endblock %}

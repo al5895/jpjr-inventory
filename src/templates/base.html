@@ -48,10 +48,10 @@
                     <a class="nav-link" href="{{ url_for('main.my_borrows') }}">
                         <i class="bi bi-box-seam"></i> Mes emprunts
                     </a>
-                    
-                    <!-- Lien vers Chat Inventaire -->
-                    <a class="nav-link" href="{{ url_for('main.chat_inventaire') }}">
-                        <i class="bi bi-chat-dots"></i> Chat Inventaire
+
+                    <!-- Lien vers Recherche d'articles -->
+                    <a class="nav-link" href="{{ url_for('main.search_articles') }}">
+                        <i class="bi bi-search"></i> Recherche d'articles
                     </a>
 
                     <!-- Menu déroulant pour l'administration -->
@@ -62,7 +62,6 @@
                         <ul class="dropdown-menu dropdown-menu-dark custom-dropdown" aria-labelledby="adminDropdown">
                             <li><h6 class="dropdown-header">Gestion des données</h6></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin.items_list') }}">Liste du matériel</a></li>
-                            <li><a class="dropdown-item" href="{{ url_for('admin.inventory_voice_admin') }}">Reconnaissance vocale d'inventaire</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin.location_admin') }}">Gestion des emplacements</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('admin.user_list') }}">Liste des utilisateurs</a></li>
                             

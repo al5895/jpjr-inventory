@@ -16,6 +16,13 @@
                 </div>
                 
                 <div class="mb-3">
+                    <label for="stock" class="form-label">Quantité initiale <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control" id="stock" name="stock" 
+                           value="{{ stock | default(1) }}" min="0" required>
+                    <div class="form-text">Nombre d'exemplaires de cet article</div>
+                </div>
+                
+                <div class="mb-3">
                     <label for="zone_id" class="form-label">Zone <span class="text-danger">*</span></label>
                     <select class="form-select" id="zone_id" name="zone_id" required>
                         <option value="">Sélectionnez une zone</option>

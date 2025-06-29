@@ -11,6 +11,9 @@
                 <a href="{{ url_for('admin.add_item') }}" class="btn btn-success">
                     <i class="bi bi-plus-circle"></i> Ajouter un article
                 </a>
+                <a href="{{ url_for('admin.out_of_stock') }}" class="btn btn-warning ms-2">
+                    <i class="bi bi-exclamation-triangle"></i> Stock épuisé
+                </a>
                 <a href="{{ url_for('reports.generate_all_items_pdf') }}" class="btn btn-info ms-2" target="_blank">
                     <i class="bi bi-file-earmark-pdf"></i> Télécharger PDF
                 </a>
@@ -54,6 +57,7 @@
                     <thead>
                         <tr>
                             <th>Nom</th>
+                            <th>Stock</th>
                             <th>Zone</th>
                             <th>Meuble</th>
                             <th>Tiroir/Niveau</th>
@@ -66,6 +70,21 @@
                         <tr {% if item.is_temporary %}class="temporary-item-row"{% endif %}>
                             <td>
                                 {{ item.name }}
+                            </td>
+                            <td>
+                                {% if item.stock == 0 %}
+                                    <span class="badge bg-danger" title="Stock épuisé">
+                                        <i class="bi bi-exclamation-triangle"></i> {{ item.stock }}
+                                    </span>
+                                {% elif item.stock <= 2 %}
+                                    <span class="badge bg-warning text-dark" title="Stock faible">
+                                        <i class="bi bi-exclamation-circle"></i> {{ item.stock }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success" title="Stock normal">
+                                        <i class="bi bi-check-circle"></i> {{ item.stock }}
+                                    </span>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if item.is_temporary %}
@@ -90,13 +109,30 @@
                             </td>
                             <td>
                                 {% if item.is_borrowed %}
-                                <span class="badge" {% if item.borrower_name %}data-bs-toggle="tooltip" data-bs-placement="top" title="Emprunté par: {{ item.borrower_name }}"{% endif %}>Emprunté</span>
+                                <span class="badge bg-secondary" {% if item.borrower_name %}data-bs-toggle="tooltip" data-bs-placement="top" title="Emprunté par: {{ item.borrower_name }}"{% endif %}>
+                                    <i class="bi bi-person-check"></i> Emprunté
+                                </span>
+                                {% elif not item.is_available %}
+                                <span class="badge bg-danger" title="Stock épuisé">
+                                    <i class="bi bi-x-circle"></i> Indisponible
+                                </span>
                                 {% else %}
-                                <span class="badge">Disponible</span>
+                                <span class="badge bg-success" title="Disponible">
+                                    <i class="bi bi-check-circle"></i> Disponible
+                                </span>
                                 {% endif %}
                             </td>
                             <td>
                                 <div class="btn-group">
+                                    <!-- Bouton pour ajuster le stock -->
+                                    <button type="button" class="btn btn-sm btn-outline-primary stock-btn" 
+                                            data-item-id="{{ item.id }}" 
+                                            data-item-name="{{ item.name | e }}"
+                                            data-current-stock="{{ item.stock }}"
+                                            title="Ajuster le stock">
+                                        <i class="bi bi-box"></i>
+                                    </button>
+                                    
                                     {% if item.is_borrowed %}
                                     <button type="button" class="btn btn-sm btn-outline-danger" disabled title="Impossible de supprimer un article emprunté">
                                         <i class="bi bi-trash"></i>
@@ -122,7 +158,43 @@
                 </table>
             </div>
         </div>
-    </div> <!-- row -->
+    </div>
+
+<!-- Modal pour ajuster le stock -->
+<div class="modal fade" id="stockModal" tabindex="-1" aria-labelledby="stockModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="stockModalLabel">
+                    <i class="bi bi-box me-2"></i>Ajuster le stock
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <p>Article : <strong id="stockItemName"></strong></p>
+                <p>Stock actuel : <strong id="stockCurrentValue"></strong></p>
+                
+                <div class="mb-3">
+                    <label for="stockNewValue" class="form-label">Nouveau stock :</label>
+                    <input type="number" class="form-control" id="stockNewValue" min="0" max="999">
+                </div>
+                
+                <div class="btn-group w-100 mb-3" role="group">
+                    <button type="button" class="btn btn-outline-secondary" onclick="adjustStock(-10)">-10</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="adjustStock(-5)">-5</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="adjustStock(-1)">-1</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="adjustStock(1)">+1</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="adjustStock(5)">+5</button>
+                    <button type="button" class="btn btn-outline-secondary" onclick="adjustStock(10)">+10</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="saveStockBtn">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Modal de confirmation de suppression en masse -->
 <div class="modal fade" id="confirmBulkDeleteModal" tabindex="-1" aria-labelledby="confirmBulkDeleteModalLabel" aria-hidden="true">
@@ -156,12 +228,73 @@ document.addEventListener('DOMContentLoaded', function() {
     var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl)
     });
+
+    // Variables globales pour la gestion du stock
+    let currentItemId = null;
+    let currentStock = 0;
+    const stockModal = new bootstrap.Modal(document.getElementById('stockModal'));
+
+    // Gestion des boutons de stock
+    document.querySelectorAll('.stock-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            currentItemId = this.dataset.itemId;
+            currentStock = parseInt(this.dataset.currentStock);
+            
+            document.getElementById('stockItemName').textContent = this.dataset.itemName;
+            document.getElementById('stockCurrentValue').textContent = currentStock;
+            document.getElementById('stockNewValue').value = currentStock;
+            
+            stockModal.show();
+        });
+    });
+
+    // Fonction pour ajuster le stock avec les boutons +/-
+    window.adjustStock = function(change) {
+        const input = document.getElementById('stockNewValue');
+        let newValue = parseInt(input.value) + change;
+        if (newValue < 0) newValue = 0;
+        if (newValue > 999) newValue = 999;
+        input.value = newValue;
+    };
+
+    // Sauvegarder le nouveau stock
+    document.getElementById('saveStockBtn').addEventListener('click', function() {
+        const newStock = parseInt(document.getElementById('stockNewValue').value);
+        
+        if (isNaN(newStock) || newStock < 0) {
+            alert('Veuillez entrer une quantité valide');
+            return;
+        }
+
+        // Envoyer la requête pour mettre à jour le stock
+        fetch(`/admin/items/${currentItemId}/update-stock`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ stock: newStock })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Recharger la page pour voir les changements
+                window.location.reload();
+            } else {
+                alert('Erreur lors de la mise à jour du stock: ' + (data.error || 'Erreur inconnue'));
+            }
+        })
+        .catch(error => {
+            console.error('Erreur:', error);
+            alert('Erreur lors de la mise à jour du stock');
+        });
+    });
+
     // --- Individual Item Delete Logic (Two-Step Click Confirmation) ---
     const deleteButtons = document.querySelectorAll('.delete-item-btn');
     let confirmTimeout = null;
     let lastClickedButton = null;
-    const originalIconHTML = '<i class="bi bi-trash"></i>'; // Icône initiale
-    const confirmIconHTML = '<i class="bi bi-check-lg"></i>'; // Icône pour confirmer (coche)
+    const originalIconHTML = '<i class="bi bi-trash"></i>';
+    const confirmIconHTML = '<i class="bi bi-check-lg"></i>';
 
     deleteButtons.forEach(button => {
         button.addEventListener('click', function(event) {
@@ -172,8 +305,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             const revertButtonAppearance = (btn) => {
                 btn.innerHTML = originalIconHTML;
-                btn.classList.remove('btn-danger'); // Enlève la classe pour fond plein
-                btn.classList.add('btn-outline-danger'); // Remet la classe pour contour
+                btn.classList.remove('btn-danger');
+                btn.classList.add('btn-outline-danger');
                 btn.title = "Supprimer l'article";
                 delete btn.dataset.confirming;
             };
@@ -187,7 +320,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        // 'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' 
                     }
                 })
                 .then(response => {
@@ -199,7 +331,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(data => {
                     if (data.success) {
-                        notificationManager.show(data.message || `Article "${itemName}" supprimé.`, 'success');
+                        if (typeof notificationManager !== 'undefined') {
+                            notificationManager.show(data.message || `Article "${itemName}" supprimé.`, 'success');
+                        }
                         if (row) row.remove();
                         const itemsCountBadge = document.querySelector('.card-header .badge');
                         if (itemsCountBadge) {
@@ -213,12 +347,16 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }
                     } else {
-                        notificationManager.show(data.error || 'Erreur lors de la suppression.', 'error');
+                        if (typeof notificationManager !== 'undefined') {
+                            notificationManager.show(data.error || 'Erreur lors de la suppression.', 'error');
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Erreur de suppression:', error);
-                    notificationManager.show(error.message || 'Une erreur réseau est survenue.', 'error');
+                    if (typeof notificationManager !== 'undefined') {
+                        notificationManager.show(error.message || 'Une erreur réseau est survenue.', 'error');
+                    }
                 });
 
             } else {
@@ -228,9 +366,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 this.dataset.confirming = 'true';
                 lastClickedButton = this;
-                this.innerHTML = confirmIconHTML; // Change l'icône
-                this.classList.remove('btn-outline-danger'); // Enlève la classe de contour
-                this.classList.add('btn-danger'); // Ajoute la classe pour fond plein rouge
+                this.innerHTML = confirmIconHTML;
+                this.classList.remove('btn-outline-danger');
+                this.classList.add('btn-danger');
                 this.title = "Cliquez à nouveau pour confirmer la suppression";
 
                 confirmTimeout = setTimeout(() => {
@@ -243,7 +381,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // --- Bulk Delete Temporary Unborrowed Items Logic (Custom Modal) ---
+    // --- Bulk Delete Temporary Unborrowed Items Logic ---
     const deleteTempBtn = document.getElementById('deleteUnborrowedTempItemsBtn');
     const confirmBulkDeleteModalElement = document.getElementById('confirmBulkDeleteModal');
     
@@ -261,32 +399,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        // 'X-CSRFToken': '{{ csrf_token() if csrf_token else "" }}' 
                     }
                 })
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        notificationManager.show(data.message || `${data.count || 0} article(s) temporaire(s) supprimé(s).`, 'success');
+                        if (typeof notificationManager !== 'undefined') {
+                            notificationManager.show(data.message || `${data.count || 0} article(s) temporaire(s) supprimé(s).`, 'success');
+                        }
                         if (data.count > 0 || (data.message && !data.message.includes("Aucun article"))) {
-                            setTimeout(() => window.location.reload(), 1500); // Shorter delay for reload
+                            setTimeout(() => window.location.reload(), 1500);
                         }
                     } else {
-                        notificationManager.show(data.error || 'Erreur lors de la suppression des articles temporaires.', 'error');
+                        if (typeof notificationManager !== 'undefined') {
+                            notificationManager.show(data.error || 'Erreur lors de la suppression des articles temporaires.', 'error');
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Erreur lors de la suppression des articles temporaires:', error);
-                    notificationManager.show('Une erreur réseau est survenue lors de la tentative de suppression.', 'error');
+                    if (typeof notificationManager !== 'undefined') {
+                        notificationManager.show('Une erreur réseau est survenue lors de la tentative de suppression.', 'error');
+                    }
                 })
                 .finally(() => {
                     confirmBulkDeleteModal.hide();
                 });
             });
         }
-    } else {
-        if (!deleteTempBtn) console.error("Bouton 'deleteUnborrowedTempItemsBtn' non trouvé.");
-        if (!confirmBulkDeleteModalElement) console.error("Modal 'confirmBulkDeleteModal' non trouvée.");
     }
 });
 </script>

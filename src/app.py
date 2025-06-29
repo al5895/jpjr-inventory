@@ -157,11 +157,29 @@ def db_config_redirect():
 def init_db():
     with app.app_context():
         db.create_all()
+        print("INFO: Tables de la base de données créées/vérifiées")
+
+# Initialiser la base de données à chaque démarrage (important pour la production)
+with app.app_context():
+    init_db()
 
 if __name__ == '__main__':
     # Configure logging
     setup_logging(app)
-    init_db()
+    
+    # Configuration différente selon l'environnement
+    if os.getenv('RENDER'):
+        # Sur Render, utiliser le port fourni par la plateforme
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port, debug=False)
+    else:
+        # En développement local
+        is_debug_mode = os.getenv('FLASK_DEBUG') == '1'
+        use_ssl = os.environ.get("USE_SSL", "true").lower() != "false"
+        if use_ssl:
+            app.run(host='0.0.0.0', port=5001, ssl_context='adhoc', debug=is_debug_mode)
+        else:
+            app.run(host='0.0.0.0', port=5001, debug=is_debug_mode)
     
     # Configuration différente selon l'environnement
     if os.getenv('RENDER'):

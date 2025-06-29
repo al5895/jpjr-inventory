@@ -32,6 +32,7 @@ DEFAULT_PG_CONFIG = {
 def get_connection_string():
     """
     Retourne la chaîne de connexion à la base de données en fonction de DB_TYPE.
+    Priorise DATABASE_URL si disponible (pour Render et autres services cloud).
 
     Pour SQLite:
     - Définir DB_TYPE=sqlite dans les variables d'environnement.
@@ -42,6 +43,12 @@ def get_connection_string():
     - La configuration est lue depuis les variables d'environnement (DB_HOST, DB_NAME, etc.)
       et peut être surchargée par le fichier 'db_config.json'.
     """
+    # Vérifier d'abord si DATABASE_URL existe (pour Render, Heroku, etc.)
+    database_url = os.getenv('DATABASE_URL')
+    if database_url:
+        print(f"INFO: Utilisation de DATABASE_URL pour la connexion cloud")
+        return database_url
+    
     if DB_TYPE == 'sqlite':
         # Construire le chemin absolu vers le fichier .db pour SQLite
         # Le fichier est placé dans le dossier 'data' à la racine du projet

@@ -248,6 +248,41 @@ def api_search_items():
     
     return jsonify({'items': results})
 
+    # Route sécurisée pour initialiser le premier super-admin
+@main_bp.route('/init-super-admin/<string:username>/<string:secret_key>')
+def init_super_admin(username, secret_key):
+    """
+    Route sécurisée pour créer le premier super-admin.
+    Ne fonctionne que s'il n'y a aucun super-admin existant.
+    """
+    # Vérifier le mot de passe secret
+    expected_secret = "JPJR-ADMIN-2024-SECURE"  # Changez ce mot de passe
+    if secret_key != expected_secret:
+        return "Accès refusé - Clé incorrecte", 403
+    
+    # Vérifier qu'aucun super-admin n'existe déjà
+    existing_super_admin = db.session.query(User).filter(User.is_super_admin == True).first()
+    if existing_super_admin:
+        return f"Un super-admin existe déjà : {existing_super_admin.name}", 400
+    
+    # Trouver l'utilisateur à promouvoir
+    user = db.session.query(User).filter(User.name == username).first()
+    if not user:
+        return f"Utilisateur '{username}' non trouvé. Créez d'abord ce compte.", 404
+    
+    # Promouvoir en super-admin
+    user.is_admin = True
+    user.is_super_admin = True
+    db.session.commit()
+    
+    return f"""
+    <h2>✅ Super-admin créé avec succès !</h2>
+    <p><strong>{username}</strong> est maintenant super-administrateur.</p>
+    <p><a href="/">Retour à l'application</a></p>
+    <hr>
+    <small>Cette route ne fonctionnera plus maintenant qu'un super-admin existe.</small>
+    """
+
 # Déconnexion
 @main_bp.route('/logout')
 def logout():
